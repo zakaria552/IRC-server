@@ -4,7 +4,7 @@ NAME		:= ircserv
 ## Compiler config
 DEPS		:= dependencies.d
 CC			:= c++
-CFLAGS		:= -Wall -Wextra -Werror -std=c++20 -MMD -MP $(CF)
+CFLAGS		:= -Wall -Wextra -Werror -std=c++20 -MMD -MP $(CF) -I./include
 
 ## Sources
 DEPS_DIR	:= deps
