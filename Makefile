@@ -11,7 +11,7 @@ DEPS_DIR	:= deps
 OBJ_DIR 	:= obj
 SRC_DIR		:= src
 VPATH		:= $(SRC_DIR)
-SRC			:= main.cpp Logger.cpp
+SRC			:= main.cpp Logger.cpp IrcServer.cpp
 OBJS 		:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
 #╔════════════════════════════════════════════╗
