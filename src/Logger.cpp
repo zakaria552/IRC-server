@@ -17,13 +17,13 @@ void Logger::info(const std::string &msg)
 void Logger::warning(const std::string &msg)
 {
      Logger *logger = Logger::getLogger();
-     logger->log(msg, INFO);
+     logger->log(msg, WARN);
 }
 
 void Logger::error(const std::string &msg)
 {
      Logger *logger = Logger::getLogger();
-     logger->log(msg, INFO);
+     logger->log(msg, ERROR);
 }
 
 void Logger::debug(const std::string &msg)
