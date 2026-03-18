@@ -1,5 +1,6 @@
 #include "irc.hpp"
 #include "Logger.hpp"
+#include "IrcServer.hpp"
 
 void client(void);
 void server(void);
@@ -7,14 +8,14 @@ void iplookup(char *domain);
 
 int main(int argc, char **args)
 {
-    Logger::info("Hello");
-    iplookup(args[1]);
+    if (argc != 3)
+    {
+        Logger::error("Missing required arguments: usage ./ircserv port password");
+        exit(1);
+    }
+    IrcServer server(args[1], args[2]);
+    server.start();
     return 0;
-    if (argc < 2)
-       server();
-    else
-       client();
-    (void) args;
 }
 
 void client(void)
