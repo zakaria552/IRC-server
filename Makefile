@@ -4,14 +4,15 @@ NAME		:= ircserv
 ## Compiler config
 DEPS		:= dependencies.d
 CC			:= c++
-CFLAGS		:= -Wall -Wextra -Werror -std=c++20 -MMD -MP $(CF) -I./include
+INCLUDES	:= -I./include -I./src/utils -I./src/server
+CFLAGS		:= -Wall -Wextra -Werror -std=c++20 -MMD -MP $(CF) $(INCLUDES)
 
 ## Sources
 DEPS_DIR	:= deps
 OBJ_DIR 	:= obj
 SRC_DIR		:= src
-VPATH		:= $(SRC_DIR)
-SRC			:= main.cpp Logger.cpp IrcServer.cpp
+VPATH		:= $(SRC_DIR) $(SRC_DIR)/server $(SRC_DIR)/utils
+SRC			:= main.cpp Logger.cpp IrcServer.cpp IOEventPoller.cpp
 OBJS 		:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
 #╔════════════════════════════════════════════╗
