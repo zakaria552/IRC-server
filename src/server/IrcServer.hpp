@@ -9,7 +9,6 @@
 #define DEFAULT_BACKLOG 10
 class IrcServer
 {
-    int port;
     int socketFd = -1;
     std::string password;
     bool closeConnection = false;

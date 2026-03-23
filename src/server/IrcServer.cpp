@@ -1,7 +1,9 @@
 #include "IrcServer.hpp"
 #include "Logger.hpp"
+#include <stdexcept>
+#include <cstring>
 
-IrcServer::IrcServer(const char *port, const char *password) : port(std::atoi(port)), password(password)
+IrcServer::IrcServer(const char *port, const char *password) :  password(password)
 {
     struct addrinfo req{}, *res, *p;
     req.ai_family = AF_UNSPEC;
