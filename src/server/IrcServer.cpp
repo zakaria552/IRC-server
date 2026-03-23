@@ -9,10 +9,7 @@ IrcServer::IrcServer(const char *port, const char *password) :  password(passwor
     req.ai_family = AF_UNSPEC;
     req.ai_flags = AI_PASSIVE;
     if (getaddrinfo(nullptr, port, &req, &res) != 0)
-    {
-        Logger::error("Failed to retrieve host address information");
-        std::runtime_error("Failed to retrieve host address information");
-    }
+        throw std::runtime_error("Failed to retrieve host address information");
     for (p = res; p != nullptr; p = p->ai_next)
     {
         if (p->ai_protocol == AF_ROUTE)
@@ -27,14 +24,13 @@ IrcServer::IrcServer(const char *port, const char *password) :  password(passwor
     }
     if (socketFd < 0)
     {
-        Logger::error("Failed to create socket");
-        std::runtime_error("Failed to create socket");
+        freeaddrinfo(res);
+        throw std::runtime_error("Failed to create socket");
     }
     if (bind(socketFd, p->ai_addr, p->ai_addrlen) != 0)
     {
         freeaddrinfo(res);
-        Logger::error("Failed binding socket to address");
-        std::runtime_error("Failed bindng socket to address");
+        throw std::runtime_error("Failed binding socket to address");
     }
     freeaddrinfo(res);
     pollfd newPoll = {};
@@ -46,10 +42,7 @@ IrcServer::IrcServer(const char *port, const char *password) :  password(passwor
 void IrcServer::start()
 {
     if (listen(socketFd, DEFAULT_BACKLOG) != 0)
-    {
-        Logger::error("Failed listening for connections on the socket" + std::string(strerror(errno)));
-        return;
-    }
+        throw std::runtime_error("Failed to listen for connections on the socket" + std::string(strerror(errno)));
     while (!closeConnection)
     {
         ioEvents.pollEvents();

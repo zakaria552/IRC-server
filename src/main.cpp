@@ -5,9 +5,15 @@ int main(int argc, char **args)
     if (argc != 3)
     {
         Logger::error("Missing required arguments: usage ./ircserv port password");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
-    irc::server server(args[1], args[2]);
-    server.start();
-    return 0;
+    try
+    {
+        irc::server server(args[1], args[2]);
+        server.start();
+    } catch(std::exception &err)
+    {
+        Logger::error(err.what());
+        exit(EXIT_FAILURE);
+    }
 }
