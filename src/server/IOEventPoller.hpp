@@ -1,12 +1,14 @@
 #pragma once
 #include <sys/poll.h>
 #include <vector>
+#include <stack>
 #include <poll.h>
 
 class IOEventPoller
 {
-public:
     std::vector<struct pollfd> polls;
+    std::stack<struct pollfd> newPolls;
+public:
     IOEventPoller() = default;
     void pollEvents();
     void add(const pollfd &);

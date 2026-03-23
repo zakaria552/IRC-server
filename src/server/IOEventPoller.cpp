@@ -6,13 +6,18 @@
 void IOEventPoller::pollEvents()
 {
     Logger::info("Polling events");
+    while (!newPolls.empty())
+    {
+        polls.push_back(newPolls.top());
+        newPolls.pop();
+    }
     if (poll(polls.data(), polls.size(), -1) < 0)
-        std::runtime_error("Poll failed");
+        throw std::runtime_error("Poll failed");
 }
 
 void IOEventPoller::add(const pollfd &newPollfd)
 {
-    polls.push_back((newPollfd));
+    newPolls.push(newPollfd);
 }
 
 void IOEventPoller::remove(const int index)
