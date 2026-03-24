@@ -1,12 +1,13 @@
 #include "IrcServer.hpp"
 #include "Logger.hpp"
+#include <cerrno>
 #include <stdexcept>
 #include <cstring>
 
 IrcServer::IrcServer(const char *port, const char *password) :  password(password)
 {
     struct addrinfo req{}, *res, *p;
-    req.ai_family = AF_UNSPEC;
+    req.ai_family = AF_INET;
     req.ai_flags = AI_PASSIVE;
     if (getaddrinfo(nullptr, port, &req, &res) != 0)
         throw std::runtime_error("Failed to retrieve host address information");
@@ -58,13 +59,13 @@ void IrcServer::start()
                 continue;
             }
             char buff[1024];
-            int n = read(client.fd, buff, 1024);
+            int n = recv(client.fd, buff, 1024, MSG_DONTWAIT);
             if (n > 0)
                 processRequest(client.fd, buff, n);
             else if (n == 0)
                 clientDisconnected(i);
             else
-                Logger::warning("Read failed");
+                Logger::warning("Recv failed");
             i++;
         }
     }
@@ -90,7 +91,9 @@ void IrcServer::newClient()
 void IrcServer::processRequest(const int clientFd, const char *body, const size_t length)
 {
     Logger::info("Processing client request");
-    send(clientFd, body, length, MSG_DONTWAIT | MSG_NOSIGNAL);
+    int bytesSent = send(clientFd, body, length, MSG_DONTWAIT | MSG_NOSIGNAL);
+    if (bytesSent <  -1)
+        Logger::error("Failed to respond to client: " + std::string(strerror(errno)));
 }
 
 void IrcServer::clientDisconnected(const int index)
