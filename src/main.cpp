@@ -1,8 +1,19 @@
-#include <iostream>
+#include "irc.hpp"
 
 int main(int argc, char **args)
 {
-    (void) argc;
-    (void) args;
-    std::cout << "hello world" << std::endl;
+    if (argc != 3)
+    {
+        Logger::error("Missing required arguments: usage ./ircserv port password");
+        exit(EXIT_FAILURE);
+    }
+    try
+    {
+        irc::server server(args[1], args[2]);
+        server.start();
+    } catch(std::exception &err)
+    {
+        Logger::error(err.what());
+        exit(EXIT_FAILURE);
+    }
 }
