@@ -1,3 +1,5 @@
+.xmake/
+build/
 obj
 ircserv
 dependencies.d

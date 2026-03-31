@@ -1,7 +1,8 @@
 #include "IrcServer.hpp"
-#include "Logger.hpp"
+#include "utils/Logger.hpp"
 #include "Parser.hpp"
 #include <cerrno>
+#include <ranges>
 #include <stdexcept>
 #include <cstring>
 #include <string>
