@@ -91,9 +91,34 @@ void IrcServer::newClient()
 void IrcServer::processRequest(const int clientFd, const char *body, const size_t length)
 {
     Logger::info("Processing client request");
-    int bytesSent = send(clientFd, body, length, MSG_DONTWAIT | MSG_NOSIGNAL);
-    if (bytesSent <  -1)
-        Logger::error("Failed to respond to client: " + std::string(strerror(errno)));
+    std::string sbody = std::string(body, length);
+    clientBuffer[clientFd].push(sbody);
+    if (!sbody.find("\r\n"))
+    {
+        Logger::info("Waiting for more data");
+        return;
+    }
+    std::string msg;
+    while (!clientBuffer[clientFd].empty())
+    {
+        msg+= clientBuffer[clientFd].front();
+        clientBuffer[clientFd].pop();
+    }
+
+    size_t pos, pos_start = 0;
+    while((pos = msg.find("\r\n", pos_start)) != std::string::npos)
+    {
+       std::string token = msg.substr(pos_start, pos - pos_start);
+       pos_start = pos + 2;
+       messages[clientFd].push(token);
+    }
+        
+        while (!clientBuffer[clientFd].empty())
+        {
+    Logger::info("Full body: " + std::string(body, length));
+    //int bytesSent = send(clientFd, body, length, MSG_DONTWAIT | MSG_NOSIGNAL);
+    //if (bytesSent <  -1)
+    //    Logger::error("Failed to respond to client: " + std::string(strerror(errno)));
 }
 
 void IrcServer::clientDisconnected(const int index)
