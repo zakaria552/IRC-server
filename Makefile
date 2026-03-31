@@ -11,8 +11,8 @@ CFLAGS		:= -Wall -Wextra -Werror -std=c++20 -MMD -MP $(CF) $(INCLUDES)
 DEPS_DIR	:= deps
 OBJ_DIR 	:= obj
 SRC_DIR		:= src
-VPATH		:= $(SRC_DIR) $(SRC_DIR)/server $(SRC_DIR)/utils
-SRC			:= main.cpp Logger.cpp IrcServer.cpp IOEventPoller.cpp Parser.cpp
+VPATH		:= $(SRC_DIR) $(SRC_DIR)/server $(SRC_DIR)/utils $(SRC_DIR)/parser
+SRC			:= main.cpp Logger.cpp IrcServer.cpp IOEventPoller.cpp RawCommandParser.cpp
 OBJS 		:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
 #╔════════════════════════════════════════════╗
