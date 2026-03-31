@@ -1,8 +1,7 @@
 #include "IrcServer.hpp"
+#include "parser/RawCommandParser.hpp"
 #include "utils/Logger.hpp"
-#include "Parser.hpp"
 #include <cerrno>
-#include <ranges>
 #include <stdexcept>
 #include <cstring>
 #include <string>
@@ -99,24 +98,24 @@ void IrcServer::newClient()
 void IrcServer::processRequest(const int clientFd, const char *body, const size_t length)
 {
     Logger::info("Processing client request");
-    Messages msgs = parser.parseBody(clientFd, body, length);
+    RawIrcCommands msgs = parser.parse(clientFd, body, length);
     if (msgs.empty())
         return;
     while(!msgs.empty())
     {
-        std::string msg = msgs.front();
-        Logger::info(msg);
-        if (msg == "CAP LS 302")
+        RawIrcCommand msg = msgs.front();
+        Logger::info(msg.cmd);
+        if (msg.cmd == "CAP LS 302")
         {
             Logger::info("Responding back");
             send(clientFd, NO_CAP, sizeof(NO_CAP), MSG_DONTWAIT | MSG_NOSIGNAL);
         }
-        else if (msg.starts_with("NICK"))
+        else if (msg.cmd.starts_with("NICK"))
         {
-            std::string nick = msg.substr(5);
+            std::string nick = msg.cmd.substr(5);
             clients[clientFd].nick = nick;
         }
-        else if (msg == "CAP END")
+        else if (msg.cmd == "CAP END")
         {
             std::string body = "001 " + clients[clientFd].nick + " :Welcome to the Internet Relay Network" + clients[clientFd].nick + "\r\n";
             send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);

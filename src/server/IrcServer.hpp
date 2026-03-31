@@ -4,10 +4,9 @@
 #include <sys/poll.h>
 #include <sys/socket.h>
 #include "IOEventPoller.hpp"
-#include "Parser.hpp"
+#include "parser/RawCommandParser.hpp"
 #include <unistd.h>
 #include <unordered_map>
-#include <queue>
 
 struct client
 {
@@ -24,7 +23,7 @@ class IrcServer
     std::string password;
     bool closeConnection = false;
     IOEventPoller ioEvents;
-    Parser parser;
+    RawCommandParser parser;
     Clients clients;
 public:
     IrcServer() = delete;
