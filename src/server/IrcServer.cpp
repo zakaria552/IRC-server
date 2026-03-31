@@ -1,8 +1,12 @@
 #include "IrcServer.hpp"
 #include "Logger.hpp"
+#include "Parser.hpp"
 #include <cerrno>
 #include <stdexcept>
 #include <cstring>
+#include <string>
+
+constexpr char NO_CAP[] = "CAP * LS :\r\n";
 
 IrcServer::IrcServer(const char *port, const char *password) :  password(password)
 {
@@ -28,6 +32,9 @@ IrcServer::IrcServer(const char *port, const char *password) :  password(passwor
         freeaddrinfo(res);
         throw std::runtime_error("Failed to create socket");
     }
+    int optval = 1;
+    if (setsockopt(socketFd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof optval) != 0)
+        throw std::runtime_error("Failed to set socket option: " + std::string(strerror(errno)));
     if (bind(socketFd, p->ai_addr, p->ai_addrlen) != 0)
     {
         freeaddrinfo(res);
@@ -91,34 +98,30 @@ void IrcServer::newClient()
 void IrcServer::processRequest(const int clientFd, const char *body, const size_t length)
 {
     Logger::info("Processing client request");
-    std::string sbody = std::string(body, length);
-    clientBuffer[clientFd].push(sbody);
-    if (!sbody.find("\r\n"))
-    {
-        Logger::info("Waiting for more data");
+    Messages msgs = parser.parseBody(clientFd, body, length);
+    if (msgs.empty())
         return;
-    }
-    std::string msg;
-    while (!clientBuffer[clientFd].empty())
+    while(!msgs.empty())
     {
-        msg+= clientBuffer[clientFd].front();
-        clientBuffer[clientFd].pop();
-    }
-
-    size_t pos, pos_start = 0;
-    while((pos = msg.find("\r\n", pos_start)) != std::string::npos)
-    {
-       std::string token = msg.substr(pos_start, pos - pos_start);
-       pos_start = pos + 2;
-       messages[clientFd].push(token);
-    }
-        
-        while (!clientBuffer[clientFd].empty())
+        std::string msg = msgs.front();
+        Logger::info(msg);
+        if (msg == "CAP LS 302")
         {
-    Logger::info("Full body: " + std::string(body, length));
-    //int bytesSent = send(clientFd, body, length, MSG_DONTWAIT | MSG_NOSIGNAL);
-    //if (bytesSent <  -1)
-    //    Logger::error("Failed to respond to client: " + std::string(strerror(errno)));
+            Logger::info("Responding back");
+            send(clientFd, NO_CAP, sizeof(NO_CAP), MSG_DONTWAIT | MSG_NOSIGNAL);
+        }
+        else if (msg.starts_with("NICK"))
+        {
+            std::string nick = msg.substr(5);
+            clients[clientFd].nick = nick;
+        }
+        else if (msg == "CAP END")
+        {
+            std::string body = "001 " + clients[clientFd].nick + " :Welcome to the Internet Relay Network" + clients[clientFd].nick + "\r\n";
+            send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+        }
+        msgs.pop();
+    }
 }
 
 void IrcServer::clientDisconnected(const int index)
