@@ -6,8 +6,6 @@
 #include <cstring>
 #include <string>
 
-constexpr char NO_CAP[] = "CAP * LS :\r\n";
-
 IrcServer::IrcServer(const char *port, const char *password) :  password(password)
 {
     struct addrinfo req{}, *res, *p;
@@ -105,18 +103,13 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
     {
         RawIrcCommand msg = msgs.front();
         Logger::info(msg.cmd);
-        if (msg.cmd == "CAP LS 302")
-        {
-            Logger::info("Responding back");
-            send(clientFd, NO_CAP, sizeof(NO_CAP), MSG_DONTWAIT | MSG_NOSIGNAL);
-        }
+        if (msg.cmd == "CAP LS 302" || msg.cmd == "CAP LS")
+            Logger::warning("Ignoring capability handshake");
         else if (msg.cmd.starts_with("NICK"))
         {
+            Logger::info("Completed registration");
             std::string nick = msg.cmd.substr(5);
             clients[clientFd].nick = nick;
-        }
-        else if (msg.cmd == "CAP END")
-        {
             std::string body = "001 " + clients[clientFd].nick + " :Welcome to the Internet Relay Network" + clients[clientFd].nick + "\r\n";
             send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
         }
