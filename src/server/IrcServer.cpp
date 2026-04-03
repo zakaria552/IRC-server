@@ -1,7 +1,10 @@
 #include "IrcServer.hpp"
+#include "commands/IrcCommand.hpp"
 #include "parser/RawCommandParser.hpp"
+#include "parser/CommandParser.hpp"
 #include "utils/Logger.hpp"
 #include <cerrno>
+#include <optional>
 #include <stdexcept>
 #include <cstring>
 #include <string>
@@ -97,6 +100,7 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
 {
     Logger::info("Processing client request");
     RawIrcCommands msgs = parser.parse(clientFd, body, length);
+    std::queue<IrcCommand> cmds = translateRawCommands(msgs);
     if (msgs.empty())
         return;
     while(!msgs.empty())
@@ -121,4 +125,26 @@ void IrcServer::clientDisconnected(const int index)
 {
     Logger::info("Client disconnected");
     ioEvents.remove(index);
+}
+
+std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
+{
+    CommandParser p = CommandParser();
+    std::queue<IrcCommand> cmds;
+
+    while (not raws.empty()) {
+        auto const raw = raws.front();
+
+        std::optional<IrcCommand> cmd = p.Parse(raw);
+        if (not cmd.has_value())
+        {
+            Logger::info("Dropped raw cmd: " + raw.cmd);
+        }
+        else
+        {
+            cmds.push(cmd.value());
+        }
+
+        raws.pop();
+    }
 }

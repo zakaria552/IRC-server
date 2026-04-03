@@ -7,6 +7,7 @@
 #include "parser/RawCommandParser.hpp"
 #include <unistd.h>
 #include <unordered_map>
+#include "commands/IrcCommand.hpp"
 
 struct client
 {
@@ -24,6 +25,7 @@ class IrcServer
     bool closeConnection = false;
     IOEventPoller ioEvents;
     RawCommandParser parser;
+    std::queue<IrcCommand> commands;
     Clients clients;
 public:
     IrcServer() = delete;
@@ -32,4 +34,7 @@ public:
     void newClient();
     void clientDisconnected(const int index);
     void processRequest(const int clientFd, const char *body, const size_t length);
+private:
+    // Translates raw commands containing strings into type-safe commands.
+    std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws);
 };

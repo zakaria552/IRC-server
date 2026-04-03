@@ -5,19 +5,14 @@
 
 struct IrcCommand
 {
-    enum Type
-    {
-        UNDEFINED,
-        CAP,
-        NICK,
-        USER,
-        PASS,
-        JOIN
-    };
-    #include "IrcCommands.hpp"
+   #include "IrcCommands.hpp"
 
     Type type;
     CmdPayload payload;
+
+    IrcCommand();
+    ~IrcCommand();
+    IrcCommand(IrcCommand const&) = default;
 };
 
 #endif
