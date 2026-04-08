@@ -133,7 +133,7 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
     std::queue<IrcCommand> cmds;
 
     while (not raws.empty()) {
-        auto const raw = raws.front();
+        auto const& raw = raws.front();
 
         std::optional<IrcCommand> cmd = p.Parse(raw);
         if (not cmd.has_value())
@@ -147,4 +147,6 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
 
         raws.pop();
     }
+
+    return std::move(cmds);
 }
