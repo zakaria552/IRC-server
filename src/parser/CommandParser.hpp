@@ -16,7 +16,7 @@ public:
     CommandParser(CommandParser const&) = delete;
     auto operator=(CommandParser const&) -> CommandParser& = delete;
 
-    auto Parse(RawIrcCommand const& raw) -> std::optional<IrcCommand>;
+    std::optional<IrcCommand> Parse(RawIrcCommand const& raw);
 };
 
 #endif

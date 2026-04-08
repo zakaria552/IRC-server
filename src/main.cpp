@@ -1,4 +1,7 @@
+#include "commands/IrcCommand.hpp"
 #include "irc.hpp"
+
+#include <unistd.h> // DELETEME!!!
 
 int main(int argc, char **args)
 {

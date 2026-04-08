@@ -3,6 +3,11 @@
 
 #include <string>
 
+/*
+ * IrcCommand is a complicated data structure because it holds non-trivial data members
+ * in a union, requiring manual resource management of the payload's contents.
+ */
+
 struct IrcCommand
 {
    #include "IrcCommands.hpp"
@@ -12,7 +17,18 @@ struct IrcCommand
 
     IrcCommand();
     ~IrcCommand();
-    IrcCommand(IrcCommand const&) = default;
+
+    IrcCommand(CapCmd);
+    IrcCommand(NickCmd);
+    IrcCommand(UserCmd);
+    IrcCommand(PassCmd);
+    IrcCommand(JoinCmd);
+    IrcCommand(PrivMsgCmd);
+
+    IrcCommand(IrcCommand&&) noexcept;
+
+    IrcCommand(IrcCommand const&) = delete;
+    IrcCommand& operator=(IrcCommand const&) = delete;
 };
 
 #endif

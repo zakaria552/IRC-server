@@ -22,9 +22,24 @@ struct CapCmd : public BaseCmd
     int version;
 };
 
+struct NickCmd : public BaseCmd
+{
+    std::string nickname;
+};
+
+struct UserCmd : public BaseCmd
+{
+    // UNDONE
+};
+
 struct PassCmd : public BaseCmd
 {
     std::string password;
+};
+
+struct JoinCmd : public BaseCmd
+{
+    // UNDONE
 };
 
 struct PrivMsgCmd : public BaseCmd
@@ -35,12 +50,16 @@ struct PrivMsgCmd : public BaseCmd
 union CmdPayload
 {
     CapCmd cap;
+    NickCmd nick;
+    UserCmd user;
     PassCmd pass;
+    JoinCmd join;
     PrivMsgCmd privmsg;
 
     CmdPayload();
     ~CmdPayload();
-    CmdPayload(CmdPayload const&);
+    CmdPayload(CmdPayload const&) = delete;
+    CmdPayload(CmdPayload&&) = delete;
 };
 
 #endif
