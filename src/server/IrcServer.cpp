@@ -148,5 +148,5 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
         raws.pop();
     }
 
-    return std::move(cmds);
+    return cmds;
 }

@@ -29,6 +29,7 @@ std::optional<IrcCommand> TryParseCap(RawIrcCommand const& raw)
 static
 std::optional<IrcCommand> TryParseNick(RawIrcCommand const& raw)
 {
+    (void)raw;
     return std::nullopt;
 }
 
