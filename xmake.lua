@@ -6,6 +6,7 @@ target("ircserv")
     add_includedirs("src")
     set_targetdir("$(projectdir)")
 
+    set_warnings("all", "extra", "error")
     set_runargs("6667", "secret")
     if is_mode("debug") then
         set_symbols("debug")
