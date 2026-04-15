@@ -2,6 +2,7 @@
 #include <string>
 #include <unordered_map>
 #include "Channel.hpp"
+#include "server/Client.hpp"
 
 using Channels = std::unordered_map<std::string, Channel>;
 
@@ -10,4 +11,6 @@ class ChannelsManager
     Channels channels;
 public:
     void add(const std::string &channel, const unsigned int &clientId);
+    void sendMessage(const Client &sender , const std::string &targets, const std::string &msg);
+    bool channelExist(const std::string &channel);
 };
