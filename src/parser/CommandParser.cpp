@@ -77,12 +77,10 @@ static std::optional<IrcCommand> TryParsePrivMsg(RawIrcCommand const& raw)
     if (raw.cmd.starts_with("PRIVMSG"))
     {
         IrcCommand::PrivMsgCmd msg;
-        size_t start = 8; // after "PRIVMSG "
+        size_t start = 8;
         size_t end = raw.cmd.find(' ', start);
         msg.targets = raw.cmd.substr(start, end - start);
         msg.say_text = raw.cmd.substr(raw.cmd.find(':') + 1);
-        Logger::info(raw.cmd);
-        Logger::info("Message: " + msg.say_text + " target: " + msg.targets);
         return IrcCommand(msg);
     }
     return std::nullopt;
