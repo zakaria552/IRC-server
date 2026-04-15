@@ -1,18 +1,37 @@
-#pragma once
 #include "Channel.hpp"
+#include "server/Client.hpp"
+#include "utils/Logger.hpp"
 #include <algorithm>
+#include <string>
+#include <sys/poll.h>
+#include <sys/socket.h>
+
+Channel::Channel(const std::string &name) : name(name){};
 
 bool Channel::isBlackListed(const unsigned int &clientId)
 {
-    return find(blackList.begin(), blackList.end(), clientId) == blackList.end();
+    return find(blackList.begin(), blackList.end(), clientId) != blackList.end();
 }
 
 bool Channel::isMember(const unsigned int &clientId)
 {
-    return find(clients.begin(), clients.end(), clientId) == clients.end();
+    return find(clients.begin(), clients.end(), clientId) != clients.end();
 }
 
 void Channel::addClient(const unsigned int &clientId)
 {
     clients.push_back(clientId);
+}
+
+void Channel::sendMessage(const Client &sender, const std::string &msg)
+{
+    for(auto client: clients)
+    {
+        if (client == sender.getSocket())
+            continue;
+        std::string src = ":" + sender.getNick();
+        std::string body = src + " PRIVMSG #" + name + " :" + msg + "\r\n";
+        send(client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+        Logger::info("Sent message to client: " + std::to_string(client) + " , " + body);
+    }
 }
