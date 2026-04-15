@@ -40,11 +40,13 @@ struct PassCmd : public BaseCmd
 struct JoinCmd : public BaseCmd
 {
     // UNDONE
+    std::string channels;
 };
 
 struct PrivMsgCmd : public BaseCmd
 {
     std::string say_text;
+    std::string targets;
 };
 
 union CmdPayload
