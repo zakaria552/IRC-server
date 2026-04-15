@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <unordered_map>
 #include "commands/IrcCommand.hpp"
+#include "ChannelsManager.hpp"
 
 struct client
 {
@@ -27,6 +28,7 @@ class IrcServer
     RawCommandParser parser;
     std::queue<IrcCommand> commands;
     Clients clients;
+    ChannelsManager channels;
 public:
     IrcServer() = delete;
     IrcServer(const char *port, const char *password);
@@ -37,4 +39,5 @@ public:
 private:
     // Translates raw commands containing strings into type-safe commands.
     std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws);
+    bool authenticate(const std::string &pass);
 };

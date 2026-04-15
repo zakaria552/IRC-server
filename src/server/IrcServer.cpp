@@ -150,3 +150,8 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
 
     return cmds;
 }
+
+bool IrcServer::authenticate(const std::string &clientPass)
+{
+    return clientPass == password;
+}
