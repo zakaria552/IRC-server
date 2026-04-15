@@ -9,14 +9,9 @@
 #include <unordered_map>
 #include "commands/IrcCommand.hpp"
 #include "ChannelsManager.hpp"
+#include "server/Client.hpp"
 
-struct client
-{
-    std::string nick;
-    std::string user;
-};
-
-using Clients = std::unordered_map<unsigned int, client>;
+using Clients = std::unordered_map<unsigned int, Client>;
 
 #define DEFAULT_BACKLOG 10
 class IrcServer
@@ -34,10 +29,10 @@ public:
     IrcServer(const char *port, const char *password);
     void start();
     void newClient();
-    void clientDisconnected(const int index);
+    void clientDisconnected(const unsigned int &clientFd);
     void processRequest(const int clientFd, const char *body, const size_t length);
 private:
     // Translates raw commands containing strings into type-safe commands.
     std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws);
-    bool authenticate(const std::string &pass);
+    bool authenticate(const Client &client);
 };

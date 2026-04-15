@@ -1,7 +1,9 @@
 #include "IrcServer.hpp"
 #include "commands/IrcCommand.hpp"
+#include "commands/IrcCommands.hpp"
 #include "parser/RawCommandParser.hpp"
 #include "parser/CommandParser.hpp"
+#include "server/Client.hpp"
 #include "utils/Logger.hpp"
 #include <cerrno>
 #include <optional>
@@ -58,7 +60,6 @@ void IrcServer::start()
         int i = 0;
         for (auto client: ioEvents)
         {
-            Logger::info(std::to_string(client.fd));
             if (!(client.revents & POLLIN) && ++i)
                 continue;
             if (client.fd == socketFd && ++i)
@@ -91,6 +92,7 @@ void IrcServer::newClient()
         Logger::warning("Failed to accept client");
         return;
     }
+    clients[clientFd] = Client(clientFd);
     newPoll.fd = clientFd;
     newPoll.events = POLLIN;
     ioEvents.add(newPoll);
@@ -101,30 +103,60 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
     Logger::info("Processing client request");
     RawIrcCommands msgs = parser.parse(clientFd, body, length);
     std::queue<IrcCommand> cmds = translateRawCommands(msgs);
-    if (msgs.empty())
+    if (cmds.empty())
         return;
-    while(!msgs.empty())
+    while(!cmds.empty())
     {
-        RawIrcCommand msg = msgs.front();
-        Logger::info(msg.cmd);
-        if (msg.cmd == "CAP LS 302" || msg.cmd == "CAP LS")
-            Logger::warning("Ignoring capability handshake");
-        else if (msg.cmd.starts_with("NICK"))
-        {
-            Logger::info("Completed registration");
-            std::string nick = msg.cmd.substr(5);
-            clients[clientFd].nick = nick;
-            std::string body = "001 " + clients[clientFd].nick + " :Welcome to the Internet Relay Network" + clients[clientFd].nick + "\r\n";
-            send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+        switch (cmds.front().type) {
+            case IrcCommand::CAP:
+                Logger::warning("Ignoring capability handshake");
+                break;
+            case IrcCommand::NICK:
+            {
+                std::string nick = cmds.front().payload.nick.nickname;
+                clients[clientFd].setNick(nick);
+                if (!authenticate(clients[clientFd]))
+                {
+                    Logger::info("Failed to authenticate client, booting them off from server");
+                    clientDisconnected(clientFd);
+                    return;
+                }
+                Logger::info("Nic: " + clients[clientFd].getNick());
+                std::string body = "001 " + clients[clientFd].getNick() + " :Welcome to the Internet Relay Network " + clients[clientFd].getNick() + "\r\n";
+                send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+                break;
+            }
+            case IrcCommand::PASS:
+            {
+                clients[clientFd].setPass(cmds.front().payload.pass.password);
+                break;
+            }
+            case IrcCommand::JOIN:
+            {
+                std::string c = cmds.front().payload.join.channels;
+                channels.add(c.substr(1), clientFd);
+                break;
+            }
+            case IrcCommand::PRIVMSG:
+            {
+                std::string msg = cmds.front().payload.privmsg.say_text;
+                std::string target = cmds.front().payload.privmsg.targets;
+                channels.sendMessage(clients[clientFd], target, msg);
+                break;
+            }
+            default:
+                break;
         }
-        msgs.pop();
+        cmds.pop();
     }
 }
 
-void IrcServer::clientDisconnected(const int index)
+void IrcServer::clientDisconnected(const unsigned int &clientFd)
 {
     Logger::info("Client disconnected");
-    ioEvents.remove(index);
+    clients.erase(clientFd);
+    ioEvents.remove(clientFd);
+    close(clientFd);
 }
 
 std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
@@ -151,7 +183,7 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
     return cmds;
 }
 
-bool IrcServer::authenticate(const std::string &clientPass)
+bool IrcServer::authenticate(const Client &client)
 {
-    return clientPass == password;
+    return client.getPass() == password;
 }
