@@ -1,5 +1,6 @@
 #include "IOEventPoller.hpp"
 #include <stdexcept>
+#include <string>
 #include <sys/poll.h>
 #include "utils/Logger.hpp"
 
@@ -20,7 +21,14 @@ void IOEventPoller::add(const pollfd &newPollfd)
     newPolls.push(newPollfd);
 }
 
-void IOEventPoller::remove(const int index)
+void IOEventPoller::remove(const int &fd)
 {
-    polls.erase(begin() + index);
+    for(unsigned int i = 0; i < polls.size(); i++)
+    {
+        if (polls[i].fd == fd)
+        {
+            polls.erase(polls.begin() + i);
+            return;
+        }
+    }
 }

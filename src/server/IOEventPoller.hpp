@@ -12,7 +12,7 @@ public:
     IOEventPoller() = default;
     void pollEvents();
     void add(const pollfd &);
-    void remove(const int index);
+    void remove(const int &fd);
     std::vector<struct pollfd>::iterator begin() {return this->polls.begin();};
     std::vector<struct pollfd>::iterator end() {return this->polls.end();};
 };
