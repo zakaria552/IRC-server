@@ -58,12 +58,11 @@ void IrcServer::start()
     while (!closeConnection)
     {
         ioEvents.pollEvents();
-        int i = 0;
         for (auto client: ioEvents)
         {
-            if (!(client.revents & POLLIN) && ++i)
+            if (not (client.revents & POLLIN))
                 continue;
-            if (client.fd == socketFd && ++i)
+            if (client.fd == socketFd)
             {
                 newClient();
                 continue;
@@ -73,10 +72,9 @@ void IrcServer::start()
             if (n > 0)
                 processRequest(client.fd, buff, n);
             else if (n == 0)
-                clientDisconnected(i);
+                clientDisconnected(client.fd);
             else
                 Logger::warning("Recv failed");
-            i++;
         }
     }
 }
