@@ -4,6 +4,7 @@
 #include "parser/RawCommandParser.hpp"
 #include "parser/CommandParser.hpp"
 #include "server/Client.hpp"
+#include "server/NumericReply.hpp"
 #include "utils/Logger.hpp"
 #include <cerrno>
 #include <optional>
@@ -118,11 +119,12 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
                 if (!authenticate(clients[clientFd]))
                 {
                     Logger::info("Failed to authenticate client, booting them off from server");
+                    std::string body = NumericRepies::passMisMatch();
+                    send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
                     clientDisconnected(clientFd);
                     return;
                 }
-                Logger::info("Nic: " + clients[clientFd].getNick());
-                std::string body = "001 " + clients[clientFd].getNick() + " :Welcome to the Internet Relay Network " + clients[clientFd].getNick() + "\r\n";
+                std::string body = NumericRepies::welcome() + clients[clientFd].getNick() + " :Welcome to the Internet Relay Network " + clients[clientFd].getNick() + "\r\n";
                 send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
                 break;
             }
