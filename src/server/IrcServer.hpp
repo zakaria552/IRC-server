@@ -29,7 +29,7 @@ public:
     IrcServer(const char *port, const char *password);
     void start();
     void newClient();
-    void clientDisconnected(const unsigned int &clientFd);
+    void clientDisconnected(unsigned int clientFd);
     void processRequest(const int clientFd, const char *body, const size_t length);
 private:
     // Translates raw commands containing strings into type-safe commands.

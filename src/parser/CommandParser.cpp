@@ -86,8 +86,24 @@ static std::optional<IrcCommand> TryParsePrivMsg(RawIrcCommand const& raw)
     return std::nullopt;
 }
 
+static std::optional<IrcCommand> TryParsePing(RawIrcCommand const& raw)
+{
+    Logger::info(raw.cmd);
+    if (raw.cmd.starts_with("PING"))
+    {
+        IrcCommand::PingCmd cmd;
+        cmd.client = raw.client;
+        cmd.token = raw.cmd;
+        cmd.token[1] = 'O';
+        return IrcCommand(cmd);
+    }
+    return std::nullopt;
+}
+
+
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
 {
+    Logger::info(raw.cmd);
     {
         std::optional<IrcCommand> cmd = TryParseCap(raw);
         if (cmd.has_value())
@@ -100,7 +116,7 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
         std::optional<IrcCommand> cmd = TryParseNick(raw);
         if (cmd.has_value())
         {
-            Logger::info("Successfully parsed a PASS irc command.\r\n");
+            Logger::info("Successfully parsed a NICK irc command.\r\n");
             return cmd;
         }
     }
@@ -116,7 +132,7 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
         std::optional<IrcCommand> cmd = TryParseJoin(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a Join irc command.\r\n";
+            std::cerr << "Successfully parsed a JOIN irc command.\r\n";
             return cmd;
         }
     }
@@ -124,7 +140,15 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
         std::optional<IrcCommand> cmd = TryParsePrivMsg(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a Join privMsg command.\r\n";
+            std::cerr << "Successfully parsed a PRIVMSG command.\r\n";
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParsePing(raw);
+        if (cmd.has_value())
+        {
+            std::cerr << "Successfully parsed a PING command.\r\n";
             return cmd;
         }
     }

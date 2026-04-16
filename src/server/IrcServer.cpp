@@ -84,9 +84,9 @@ void IrcServer::start()
 void IrcServer::newClient()
 {
     Logger::info("new connection");
-    struct sockaddr_storage clientAddr;
+    sockaddr_storage clientAddr;
     pollfd newPoll = {};
-    socklen_t addrLen;
+    socklen_t addrLen = sizeof(sockaddr_storage);
     int clientFd;
     if ((clientFd = accept(socketFd, (struct sockaddr *)&clientAddr, &addrLen)) < 0)
     {
@@ -97,6 +97,13 @@ void IrcServer::newClient()
     newPoll.fd = clientFd;
     newPoll.events = POLLIN;
     ioEvents.add(newPoll);
+}
+
+void HandlePingCmd(IrcCommand::PingCmd const& cmd, std::string const& server_name)
+{
+    std::string src = ":";
+    std::string body = src + server_name + " " + cmd.token + "\r\n";
+    send(cmd.client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
 }
 
 void IrcServer::processRequest(const int clientFd, const char *body, const size_t length)
@@ -146,6 +153,11 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
                 channels.sendMessage(clients[clientFd], target, msg);
                 break;
             }
+            case IrcCommand::PING:
+            {
+                HandlePingCmd(cmds.front().payload.ping, "CHANGE_ME_SERVER_NAME");
+                break;
+            }
             default:
                 break;
         }
@@ -153,10 +165,17 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
     }
 }
 
-void IrcServer::clientDisconnected(const unsigned int &clientFd)
+void IrcServer::clientDisconnected(unsigned int clientFd)
 {
     Logger::info("Client disconnected");
-    clients.erase(clientFd);
+
+    // .erase() was sometimes returning 0 instead of expected 1 element removed.
+    if (clients.erase(clientFd) == 0) [[unlikely]]
+    {
+        Logger::info("UNEXPECTED FAIL TO ERASE CLIENT!");
+        std::exit(1);
+    }
+
     ioEvents.remove(clientFd);
     close(clientFd);
 }
@@ -187,5 +206,8 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws)
 
 bool IrcServer::authenticate(const Client &client)
 {
+    Logger::info(client.getPass());
+    Logger::info(password);
+    Logger::info(client.getPass() == password ? "yay" : "nay");
     return client.getPass() == password;
 }

@@ -10,6 +10,7 @@ enum Type
     PASS,
     JOIN,
     PRIVMSG,
+    PING,
 };
 
 struct BaseCmd
@@ -49,6 +50,11 @@ struct PrivMsgCmd : public BaseCmd
     std::string targets;
 };
 
+struct PingCmd : public BaseCmd
+{
+    std::string token;
+};
+
 union CmdPayload
 {
     CapCmd cap;
@@ -57,6 +63,7 @@ union CmdPayload
     PassCmd pass;
     JoinCmd join;
     PrivMsgCmd privmsg;
+    PingCmd ping;
 
     CmdPayload();
     ~CmdPayload();

@@ -33,6 +33,9 @@ IrcCommand::~IrcCommand(void)
         case IrcCommand::Type::PRIVMSG:
             payload.privmsg.~PrivMsgCmd();
             break;
+        case IrcCommand::Type::PING:
+            payload.ping.~PingCmd();
+            break;
     }
 }
 
@@ -62,8 +65,11 @@ IrcCommand::IrcCommand(IrcCommand&& other) noexcept
         case PRIVMSG:
             new (&payload.privmsg) PrivMsgCmd(std::move(other.payload.privmsg));
             break;
+        case PING:
+            new (&payload.ping) PingCmd(std::move(other.payload.ping));
+            break;
     }
-    other.type = Type::UNDEFINED;
+    other.type = Type::UNDEFINED; // CHECK THIS!
 }
 
 IrcCommand::IrcCommand(CapCmd cmd)
@@ -100,6 +106,12 @@ IrcCommand::IrcCommand(PrivMsgCmd cmd)
 : type(PRIVMSG)
 {
     new (&payload.privmsg) PrivMsgCmd(std::move(cmd));
+}
+
+IrcCommand::IrcCommand(PingCmd cmd)
+: type(PING)
+{
+    new (&payload.ping) PingCmd(std::move(cmd));
 }
 
 /* CmdPayload definitions. */
