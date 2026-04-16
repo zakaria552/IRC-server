@@ -12,7 +12,7 @@ DEPS_DIR	:= deps
 OBJ_DIR 	:= obj
 SRC_DIR		:= src
 VPATH		:= $(SRC_DIR) $(SRC_DIR)/server $(SRC_DIR)/utils $(SRC_DIR)/parser
-SRC			:= main.cpp Logger.cpp IrcServer.cpp IOEventPoller.cpp RawCommandParser.cpp
+SRC			:= src/commands/IrcCommand.cpp src/main.cpp src/parser/CommandParser.cpp src/parser/RawCommandParser.cpp src/server/Channel.cpp src/server/ChannelsManager.cpp src/server/Client.cpp src/server/IOEventPoller.cpp src/server/IrcServer.cpp src/utils/iplookup.cpp src/utils/Logger.cpp
 OBJS 		:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
 #╔════════════════════════════════════════════╗
