@@ -26,6 +26,7 @@ public:
     std::string getLevel(void);
     std::string getLevel(const Level &level);
     void log(const std::string &msg, const Level &level);
+    std::string timestamp();
     static Logger *getLogger();
     static void info(const std::string &msg);
     static void error(const std::string &msg);

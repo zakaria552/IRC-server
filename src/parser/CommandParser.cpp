@@ -40,17 +40,20 @@ static std::optional<IrcCommand> TryParseNick(RawIrcCommand const& raw)
     return std::nullopt;
 }
 
-// static std::optional<IrcCommand> TryParseUser(RawIrcCommand const& raw)
-// {
-//     if (raw.cmd.starts_with("USER"))
-//     {
-//         Logger::info("Nick: " + raw.cmd);
-//         IrcCommand::UserCmd user;
-//         user.client = raw.client;
-//         return IrcCommand(user);
-//     }
-//     return std::nullopt;
-// }
+static std::optional<IrcCommand> TryParseUser(RawIrcCommand const& raw)
+{
+    if (raw.cmd.starts_with("USER"))
+    {
+        IrcCommand::UserCmd user;
+        user.client = raw.client;
+        size_t start = 5;
+        size_t end = raw.cmd.find(' ', start);
+        user.user = raw.cmd.substr(5, end - start);
+        user.fullName = raw.cmd.substr(raw.cmd.find(':') + 1);
+        return IrcCommand(user);
+    }
+    return std::nullopt;
+}
 static std::optional<IrcCommand> TryParsePass(RawIrcCommand const& raw)
 {
     if (raw.cmd.starts_with("PASS"))
@@ -109,6 +112,14 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
         if (cmd.has_value())
         {
             std::cerr << "Successfully parsed a CAP irc command.\r\n";
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParseUser(raw);
+        if (cmd.has_value())
+        {
+            std::cerr << "Successfully parsed a User command.\r\n";
             return cmd;
         }
     }
