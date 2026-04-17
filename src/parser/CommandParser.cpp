@@ -148,7 +148,8 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
         std::optional<IrcCommand> cmd = TryParsePing(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a PING command.\r\n";
+            // std::cerr << "Successfully parsed a PING command.\r\n";
+            std::cerr << "PING cmd.\r\n";
             return cmd;
         }
     }
