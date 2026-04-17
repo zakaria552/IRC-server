@@ -31,6 +31,8 @@ struct NickCmd : public BaseCmd
 struct UserCmd : public BaseCmd
 {
     // UNDONE
+    std::string user;
+    std::string fullName;
 };
 
 struct PassCmd : public BaseCmd
