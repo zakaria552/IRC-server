@@ -9,6 +9,7 @@ enum Type
     USER,
     PASS,
     JOIN,
+    INVITE,
     PRIVMSG,
     PING,
 };
@@ -57,6 +58,12 @@ struct PingCmd : public BaseCmd
     std::string token;
 };
 
+struct InviteCmd : public BaseCmd
+{
+    std::string nick;
+    std::string channel;
+};
+
 union CmdPayload
 {
     CapCmd cap;
@@ -64,6 +71,7 @@ union CmdPayload
     UserCmd user;
     PassCmd pass;
     JoinCmd join;
+    InviteCmd invite;
     PrivMsgCmd privmsg;
     PingCmd ping;
 

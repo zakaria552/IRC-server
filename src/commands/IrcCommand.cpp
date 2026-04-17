@@ -36,6 +36,9 @@ IrcCommand::~IrcCommand(void)
         case IrcCommand::Type::PING:
             payload.ping.~PingCmd();
             break;
+        case IrcCommand::Type::INVITE:
+            payload.invite.~InviteCmd();
+            break;
     }
 }
 
@@ -67,6 +70,9 @@ IrcCommand::IrcCommand(IrcCommand&& other) noexcept
             break;
         case PING:
             new (&payload.ping) PingCmd(std::move(other.payload.ping));
+            break;
+        case INVITE:
+            new (&payload.invite) InviteCmd(std::move(other.payload.invite));
             break;
     }
     other.type = Type::UNDEFINED; // CHECK THIS!
@@ -112,6 +118,12 @@ IrcCommand::IrcCommand(PingCmd cmd)
 : type(PING)
 {
     new (&payload.ping) PingCmd(std::move(cmd));
+}
+
+IrcCommand::IrcCommand(InviteCmd cmd)
+: type(INVITE)
+{
+    new (&payload.invite) InviteCmd(std::move(cmd));
 }
 
 /* CmdPayload definitions. */
