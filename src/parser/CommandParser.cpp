@@ -103,6 +103,20 @@ static std::optional<IrcCommand> TryParsePing(RawIrcCommand const& raw)
     return std::nullopt;
 }
 
+static std::optional<IrcCommand> TryParseInvite(RawIrcCommand const& raw)
+{
+    if (raw.cmd.starts_with("INVITE"))
+    {
+        IrcCommand::InviteCmd cmd; // INVITE jack #67
+        size_t start = 7;
+        size_t end = raw.cmd.find(' ', start);
+        cmd.nick = raw.cmd.substr(start, end - start);
+        cmd.channel = raw.cmd.substr(raw.cmd.find("#") + 1);
+        return IrcCommand(cmd);
+    }
+    return std::nullopt;
+}
+
 
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
 {
@@ -161,6 +175,15 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw)
         {
             // std::cerr << "Successfully parsed a PING command.\r\n";
             std::cerr << "PING cmd.\r\n";
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParseInvite(raw);
+        if (cmd.has_value())
+        {
+            // std::cerr << "Successfully parsed a PING command.\r\n";
+            std::cerr << "INVITE cmd.\r\n";
             return cmd;
         }
     }
