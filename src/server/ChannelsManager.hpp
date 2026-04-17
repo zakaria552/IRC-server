@@ -13,4 +13,5 @@ public:
     void add(const std::string &channel, const unsigned int &clientId);
     void sendMessage(const Client &sender , const std::string &targets, const std::string &msg);
     bool channelExist(const std::string &channel);
+    bool isMemberOfChannel(const std::string &channel, unsigned int client);
 };
