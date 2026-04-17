@@ -44,3 +44,10 @@ bool ChannelsManager::channelExist(const std::string &channel)
 {
     return channels.find(channel) != channels.end();
 }
+
+bool ChannelsManager::isMemberOfChannel(const std::string &channel, unsigned int client)
+{
+    if (channels.find(channel) != channels.end())
+        return channels[channel].isMember(client);
+    return false;
+}
