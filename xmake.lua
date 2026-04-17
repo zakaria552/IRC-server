@@ -1,4 +1,3 @@
-set_languages("c++20")
 
 target("ircserv")
     set_kind("binary")
@@ -6,6 +5,7 @@ target("ircserv")
     add_includedirs("src")
     set_targetdir("$(projectdir)")
 
+    set_languages("c++20")
     set_warnings("all", "extra", "error")
     set_runargs("6667", "secret")
     if is_mode("debug") then
