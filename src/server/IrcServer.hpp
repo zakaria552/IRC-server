@@ -37,4 +37,5 @@ private:
     bool authenticate(const Client &client);
     void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd, unsigned int clientFd);
     void HandleUserCmd(const IrcCommand::UserCmd &cmd, unsigned int clientFd);
+    void HandleInviteCmd(const IrcCommand::InviteCmd &cmd, unsigned int clientFd, const std::string &server);
 };

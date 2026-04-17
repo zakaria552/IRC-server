@@ -125,6 +125,42 @@ void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd, unsigned int
     Logger::info("Not found user to send the message");
 }
 
+void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd, unsigned int clientFd, const std::string &server)
+{
+    if (!channels.channelExist(cmd.channel))
+    {
+        std::string src = ":" + server;
+        std::string body = src + " 403 " + clients[clientFd].getNick() + " " + cmd.channel + " :No such  channel\r\n";
+        send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+        Logger::info(body);
+        return;
+    }
+    if (!channels.isMemberOfChannel(cmd.channel, clientFd))
+    {
+        std::string body = ":442 " + cmd.channel + " :You're not on that channel \r\n";
+        send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+        return;
+    }
+    for(auto [fd, client]:clients)
+    {
+        const std::string nick = client.getNick();
+        if (fd != clientFd && nick == cmd.nick)
+        {
+            if (channels.isMemberOfChannel(cmd.channel, fd))
+            {
+                std::string body = ":443 " + cmd.nick + " #" + cmd.channel + " is already on channel\r\n";
+                send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+                return;
+            }
+            channels.add(cmd.channel, fd);
+            std::string src = ":" + clients[clientFd].getNick();
+            std::string body = src + " INVITE " + nick + " :#" + cmd.channel + "\r\n";
+            send(fd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+            return;
+        }
+    }
+}
+
 void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd, unsigned int clientFd)
 {
     clients[clientFd].setFullname(cmd.fullName);
@@ -184,6 +220,11 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
             case IrcCommand::USER:
             {
                 HandleUserCmd(cmds.front().payload.user, clientFd);
+                break;
+            }
+            case IrcCommand::INVITE:
+            {
+                HandleInviteCmd(cmds.front().payload.invite,  clientFd, "CHANGE_ME_SERVER_NAME");
                 break;
             }
             default:
