@@ -8,17 +8,17 @@
 
 Channel::Channel(const std::string &name) : name(name){};
 
-bool Channel::isBlackListed(const unsigned int &clientId)
+bool Channel::isBlackListed(int clientId)
 {
     return find(blackList.begin(), blackList.end(), clientId) != blackList.end();
 }
 
-bool Channel::isMember(const unsigned int &clientId)
+bool Channel::isMember(int clientId)
 {
     return find(clients.begin(), clients.end(), clientId) != clients.end();
 }
 
-void Channel::addClient(const unsigned int &clientId)
+void Channel::addClient(int clientId)
 {
     clients.push_back(clientId);
 }

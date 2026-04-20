@@ -23,7 +23,7 @@ void IOEventPoller::add(const pollfd &newPollfd)
 
 void IOEventPoller::remove(const int &fd)
 {
-    for(unsigned int i = 0; i < polls.size(); i++)
+    for(size_t i = 0; i < polls.size(); i++)
     {
         if (polls[i].fd == fd)
         {

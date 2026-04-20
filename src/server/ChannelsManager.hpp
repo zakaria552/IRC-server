@@ -10,8 +10,8 @@ class ChannelsManager
 {
     Channels channels;
 public:
-    void add(const std::string &channel, const unsigned int &clientId);
+    void add(const std::string &channel, int clientFd);
     void sendMessage(const Client &sender , const std::string &targets, const std::string &msg);
     bool channelExist(const std::string &channel);
-    bool isMemberOfChannel(const std::string &channel, unsigned int client);
+    bool isMemberOfChannel(const std::string &channel, int clientFd);
 };
