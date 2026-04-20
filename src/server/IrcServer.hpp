@@ -11,7 +11,7 @@
 #include "ChannelsManager.hpp"
 #include "server/Client.hpp"
 
-using Clients = std::unordered_map<unsigned int, Client>;
+using Clients = std::unordered_map<int, Client>;
 
 #define DEFAULT_BACKLOG 10
 class IrcServer
@@ -29,12 +29,13 @@ public:
     IrcServer(const char *port, const char *password);
     void start();
     void newClient();
-    void clientDisconnected(unsigned int clientFd);
-    void processRequest(const int clientFd, const char *body, const size_t length);
+    void clientDisconnected(int clientFd);
+    void processRequest(int clientFd, const char *body, const size_t length);
 private:
     // Translates raw commands containing strings into type-safe commands.
-    std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws);
+    std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws, int clientFd);
     bool authenticate(const Client &client);
-    void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd, unsigned int clientFd);
-    void HandleUserCmd(const IrcCommand::UserCmd &cmd, unsigned int clientFd);
+    void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd);
+    void HandleUserCmd(const IrcCommand::UserCmd &cmd);
+    void HandleInviteCmd(const IrcCommand::InviteCmd &cmd, const std::string &server);
 };

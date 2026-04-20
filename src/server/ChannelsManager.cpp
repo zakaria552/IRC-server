@@ -3,7 +3,7 @@
 #include "server/Client.hpp"
 #include "utils/Logger.hpp"
 
-void ChannelsManager::add(const std::string &channel, const unsigned int &clientId)
+void ChannelsManager::add(const std::string &channel, int clientId)
 {
     Channel *room;
     if (channelExist(channel))
@@ -43,4 +43,12 @@ void ChannelsManager::sendMessage(const Client &sender, const std::string &targe
 bool ChannelsManager::channelExist(const std::string &channel)
 {
     return channels.find(channel) != channels.end();
+}
+
+bool ChannelsManager::isMemberOfChannel(const std::string &channel, int client)
+{
+    auto it = channels.find(channel);
+    if (it != channels.end())
+        return it->second.isMember(client);
+    return false;
 }
