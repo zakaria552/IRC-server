@@ -16,7 +16,7 @@ public:
     CommandParser(CommandParser const&) = delete;
     auto operator=(CommandParser const&) -> CommandParser& = delete;
 
-    std::optional<IrcCommand> Parse(RawIrcCommand const& raw);
+    std::optional<IrcCommand> Parse(RawIrcCommand const& raw, int clientFd);
 };
 
 #endif
