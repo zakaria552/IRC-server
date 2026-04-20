@@ -35,4 +35,6 @@ private:
     // Translates raw commands containing strings into type-safe commands.
     std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws);
     bool authenticate(const Client &client);
+    void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd, unsigned int clientFd);
+    void HandleUserCmd(const IrcCommand::UserCmd &cmd, unsigned int clientFd);
 };

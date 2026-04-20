@@ -9,7 +9,7 @@ class Channel
     std::string topic;
     std::vector<unsigned int> clients;
     std::vector<unsigned int> blackList;
-    void *mode; // unspecified for now
+    //void *mode; // unspecified for now
 public:
     Channel() = default;
     Channel(const std::string &name);

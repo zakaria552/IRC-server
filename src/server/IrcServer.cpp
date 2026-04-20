@@ -104,6 +104,33 @@ void HandlePingCmd(IrcCommand::PingCmd const& cmd, std::string const& server_nam
     send(cmd.client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
 }
 
+void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd, unsigned int clientFd)
+{
+    if (cmd.targets[0] == '#')
+    {
+        channels.sendMessage(clients[clientFd], cmd.targets, cmd.say_text);
+        return;
+    }
+    for(auto [fd, client]: clients)
+    {
+        const std::string nick = client.getNick();
+        if (fd != clientFd && nick == cmd.targets)
+        {
+            std::string src = ":" + clients[clientFd].getNick();
+            std::string body = src + " PRIVMSG " + cmd.targets + " :" + cmd.say_text + "\r\n";
+            send(fd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+            return;
+        }
+    }
+    Logger::info("Not found user to send the message");
+}
+
+void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd, unsigned int clientFd)
+{
+    clients[clientFd].setFullname(cmd.fullName);
+    clients[clientFd].setUsername(cmd.user);
+}
+
 void IrcServer::processRequest(const int clientFd, const char *body, const size_t length)
 {
     Logger::info("Processing client request");
@@ -146,14 +173,17 @@ void IrcServer::processRequest(const int clientFd, const char *body, const size_
             }
             case IrcCommand::PRIVMSG:
             {
-                std::string msg = cmds.front().payload.privmsg.say_text;
-                std::string target = cmds.front().payload.privmsg.targets;
-                channels.sendMessage(clients[clientFd], target, msg);
+                HandlePrivMsgCmd(cmds.front().payload.privmsg, clientFd);
                 break;
             }
             case IrcCommand::PING:
             {
                 HandlePingCmd(cmds.front().payload.ping, "CHANGE_ME_SERVER_NAME");
+                break;
+            }
+            case IrcCommand::USER:
+            {
+                HandleUserCmd(cmds.front().payload.user, clientFd);
                 break;
             }
             default:
