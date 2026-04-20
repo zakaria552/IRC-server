@@ -1,4 +1,5 @@
 #include <signal.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -49,6 +50,10 @@ void Update()
 
     if (pid == 0)
     {
+        // never thought of this one before
+        close(STDOUT_FILENO);
+        open("/dev/null", O_WRONLY);
+
         if (-1 == execvp("git", (char *const[]){"git", "pull", NULL}))
         {
             fprintf(stderr, "Error: execvp() returned %s.\r\n", strerror(errno));
@@ -93,6 +98,10 @@ void Update()
 
     if (pid == 0)
     {
+        // never thought of this one before
+        close(STDOUT_FILENO);
+        open("/dev/null", O_WRONLY);
+
         if (-1 == execvp("xmake", (char *const[]){"xmake", "build", NULL}))
         {
             fprintf(stderr, "Error: execvp() returned %s.\r\n", strerror(errno));
