@@ -1,6 +1,7 @@
 #ifndef _IRC_COMMANDS_HPP_
 #define _IRC_COMMANDS_HPP_
 
+#include <cstdint>
 enum Type
 {
     UNDEFINED,
@@ -12,6 +13,7 @@ enum Type
     INVITE,
     PRIVMSG,
     PING,
+    MODE,
 };
 
 struct BaseCmd
@@ -64,6 +66,14 @@ struct InviteCmd : public BaseCmd
     std::string channel;
 };
 
+struct ModeCmd : public BaseCmd
+{
+    std::string channel;
+    std::string target;
+    uint8_t mode;
+    char intent;
+};
+
 union CmdPayload
 {
     CapCmd cap;
@@ -74,6 +84,7 @@ union CmdPayload
     InviteCmd invite;
     PrivMsgCmd privmsg;
     PingCmd ping;
+    ModeCmd mode;
 
     CmdPayload();
     ~CmdPayload();

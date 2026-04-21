@@ -21,7 +21,6 @@ class IrcServer
     bool closeConnection = false;
     IOEventPoller ioEvents;
     RawCommandParser parser;
-    std::queue<IrcCommand> commands;
     Clients clients;
     ChannelsManager channels;
 public:

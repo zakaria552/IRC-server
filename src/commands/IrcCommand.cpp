@@ -39,6 +39,9 @@ IrcCommand::~IrcCommand(void)
         case IrcCommand::Type::INVITE:
             payload.invite.~InviteCmd();
             break;
+        case IrcCommand::Type::MODE:
+            payload.mode.~ModeCmd();
+            break;
     }
 }
 
@@ -73,6 +76,9 @@ IrcCommand::IrcCommand(IrcCommand&& other) noexcept
             break;
         case INVITE:
             new (&payload.invite) InviteCmd(std::move(other.payload.invite));
+            break;
+        case MODE:
+            new (&payload.mode) ModeCmd(std::move(other.payload.mode));
             break;
     }
     other.type = Type::UNDEFINED; // CHECK THIS!
@@ -124,6 +130,12 @@ IrcCommand::IrcCommand(InviteCmd cmd)
 : type(INVITE)
 {
     new (&payload.invite) InviteCmd(std::move(cmd));
+}
+
+IrcCommand::IrcCommand(ModeCmd cmd)
+: type(MODE)
+{
+    new (&payload.mode) ModeCmd(std::move(cmd));
 }
 
 /* CmdPayload definitions. */

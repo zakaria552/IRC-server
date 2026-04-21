@@ -35,3 +35,18 @@ void Channel::sendMessage(const Client &sender, const std::string &msg)
         Logger::info("Sent message to client: " + std::to_string(client) + " , " + body);
     }
 }
+
+
+bool Channel::modeIsSet(Mode mode)
+{
+    return (modes >> mode) & 1;
+}
+void Channel::setMode(Mode mode)
+{
+    modes |= mode;
+}
+void Channel::removeMode(Mode mode)
+{
+    //       111     010
+    modes = modes & ~mode;
+}
