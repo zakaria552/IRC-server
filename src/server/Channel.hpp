@@ -31,5 +31,5 @@ public:
     void sendMessage(const Client &sender, const std::string &msg);
     bool modeIsSet(Mode mode);
     void setMode(Mode mode);
-    void removeMode(Mode mode);
+    void unsetMode(Mode mode);
 };

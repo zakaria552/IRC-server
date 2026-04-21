@@ -36,7 +36,6 @@ void Channel::sendMessage(const Client &sender, const std::string &msg)
     }
 }
 
-
 bool Channel::modeIsSet(Mode mode)
 {
     return (modes >> mode) & 1;
@@ -45,7 +44,7 @@ void Channel::setMode(Mode mode)
 {
     modes |= mode;
 }
-void Channel::removeMode(Mode mode)
+void Channel::unsetMode(Mode mode)
 {
     //       111     010
     modes = modes & ~mode;
