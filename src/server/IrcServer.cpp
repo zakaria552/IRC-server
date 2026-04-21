@@ -161,6 +161,11 @@ void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd, const std::str
     }
 }
 
+
+void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
+{
+}
+
 void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
 {
     clients[cmd.client].setFullname(cmd.fullName);
@@ -225,6 +230,11 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
             case IrcCommand::INVITE:
             {
                 HandleInviteCmd(cmds.front().payload.invite, "CHANGE_ME_SERVER_NAME");
+                break;
+            }
+            case IrcCommand::MODE:
+            {
+                HandleModeCmd(cmds.front().payload.mode);
                 break;
             }
             default:

@@ -37,4 +37,5 @@ private:
     void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd);
     void HandleUserCmd(const IrcCommand::UserCmd &cmd);
     void HandleInviteCmd(const IrcCommand::InviteCmd &cmd, const std::string &server);
+    void HandleModeCmd(const IrcCommand::ModeCmd &cmd);
 };
