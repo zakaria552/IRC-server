@@ -17,6 +17,7 @@ using Clients = std::unordered_map<int, Client>;
 class IrcServer
 {
     int socketFd = -1;
+    std::string serverName;
     std::string password;
     bool closeConnection = false;
     IOEventPoller ioEvents;
@@ -25,7 +26,7 @@ class IrcServer
     ChannelsManager channels;
 public:
     IrcServer() = delete;
-    IrcServer(const char *port, const char *password);
+    IrcServer(const std::string &serverName, const char *port, const char *password);
     void start();
     void newClient();
     void clientDisconnected(int clientFd);
@@ -36,6 +37,7 @@ private:
     bool authenticate(const Client &client);
     void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd);
     void HandleUserCmd(const IrcCommand::UserCmd &cmd);
-    void HandleInviteCmd(const IrcCommand::InviteCmd &cmd, const std::string &server);
+    void HandleInviteCmd(const IrcCommand::InviteCmd &cmd);
     void HandleModeCmd(const IrcCommand::ModeCmd &cmd);
+    void HandleJoinCmd(const IrcCommand::JoinCmd &cmd);
 };
