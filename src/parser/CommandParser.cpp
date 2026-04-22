@@ -122,15 +122,22 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
 {
     if (!raw.cmd.starts_with("MODE"))
         return std::nullopt;
-    IrcCommand::ModeCmd cmd; // INVITE jack #67
-    std::string mode = raw.cmd.substr(5, raw.cmd.find(' '));
+    IrcCommand::ModeCmd cmd; // MODE #67 -i
+    int start = raw.cmd.find(' ', 5);
+    if (start < 0)
+        return std::nullopt;
+    std::string mode = raw.cmd.substr(start + 1);
+    cmd.channel = raw.cmd.substr(5, raw.cmd.find(' ') - 1);
+    if (mode.size() < 2)
+        return std::nullopt;
+    Logger::info("Channel-["+cmd.channel+"]");
     switch (mode[1]) {
         case 'i':
             cmd.mode = INVITE_ONLY;
             cmd.intent = mode[0];
             break;
         default:
-            Logger::warning("Mode " + std::to_string(mode[1]) + " is not supported");
+            Logger::warning("Mode [" + mode + "] is not supported");
             break;
     }
     return IrcCommand(cmd);
