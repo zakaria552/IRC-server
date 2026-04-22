@@ -19,7 +19,8 @@ class Channel
     std::string topic;
     std::vector<int> clients;
     std::vector<int> blackList;
-    uint8_t modes = NONE; // unspecified for now
+    std::vector<std::string> inviteList;
+    uint8_t modes = INVITE_ONLY; // unspecified for now
     unsigned int maxUsers;
 public:
     Channel() = default;
@@ -27,9 +28,14 @@ public:
     ~Channel() = default;
     bool isBlackListed(int clientId);
     bool isMember(int clientId);
+    void invite(const std::string &);
+    bool isInvited(const std::string &);
+    void removeInvite(const std::string &);
     void addClient(int clientId);
     void sendMessage(const Client &sender, const std::string &msg);
+    uint8_t getModes();
     bool modeIsSet(Mode mode);
     void setMode(Mode mode);
     void unsetMode(Mode mode);
+    const std::string &getName() const;
 };

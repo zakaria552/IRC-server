@@ -49,3 +49,29 @@ void Channel::unsetMode(Mode mode)
     //       111     010
     modes = modes & ~mode;
 }
+
+const std::string &Channel::getName() const
+{
+   return name;
+}
+
+uint8_t Channel::getModes()
+{
+    return modes;
+}
+
+void Channel::invite(const std::string &user)
+{
+    inviteList.push_back(user);
+}
+bool Channel::isInvited(const std::string &user)
+{
+    return find(inviteList.begin(), inviteList.end(), user) != inviteList.end();
+}
+
+void Channel::removeInvite(const std::string &user)
+{
+    auto it = find(inviteList.begin(), inviteList.end(), user);
+    if (it != inviteList.end())
+        inviteList.erase(it);
+}
