@@ -35,9 +35,15 @@ private:
     // Translates raw commands containing strings into type-safe commands.
     std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws, int clientFd);
     bool authenticate(const Client &client);
-    void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd);
-    void HandleUserCmd(const IrcCommand::UserCmd &cmd);
-    void HandleInviteCmd(const IrcCommand::InviteCmd &cmd);
-    void HandleModeCmd(const IrcCommand::ModeCmd &cmd);
-    void HandleJoinCmd(const IrcCommand::JoinCmd &cmd);
+    void handleCmd(const IrcCommand &cmd);
+    void HandlePrivMsgCmd(const IrcCommand::CmdPayload *payload);
+    void HandleUserCmd(const IrcCommand::CmdPayload *payload);
+    void HandleInviteCmd(const IrcCommand::CmdPayload *payload);
+    void HandleModeCmd(const IrcCommand::CmdPayload *payload);
+    void HandleJoinCmd(const IrcCommand::CmdPayload *payload);
+    void HandleNickCmd(const IrcCommand::CmdPayload *payload);
+    void HandlePassCmd(const IrcCommand::CmdPayload *payload);
+    void HandleCapCmd(const IrcCommand::CmdPayload *payload);
+    void HandlePingCmd(const IrcCommand::CmdPayload *payload);
+    using CmdHandler = void (IrcServer::*)(const IrcCommand::CmdPayload *);
 };

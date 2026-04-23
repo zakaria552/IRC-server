@@ -100,108 +100,6 @@ void IrcServer::newClient()
     ioEvents.add(newPoll);
 }
 
-void HandlePingCmd(IrcCommand::PingCmd const& cmd, std::string const& server_name)
-{
-    std::string src = ":";
-    std::string body = src + server_name + " " + cmd.token + "\r\n";
-    send(cmd.client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
-}
-
-void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
-{
-    if (cmd.targets[0] == '#')
-    {
-        Channel *channel = channels.getChannel(cmd.targets.substr(1));
-        if (channel)
-            channel->sendMessage(clients[cmd.client], cmd.say_text);
-        return;
-    }
-    for(auto [fd, client]: clients)
-    {
-        std::string_view nick = client.getNick();
-        if (fd != cmd.client && nick == cmd.targets)
-        {
-            std::string src = ":" + clients[cmd.client].getNick();
-            std::string body = src + " PRIVMSG " + cmd.targets + " :" + cmd.say_text + "\r\n";
-            send(fd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
-            return;
-        }
-    }
-    Logger::info("Not found user to send the message");
-}
-
-void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
-{
-    Channel *channel = channels.getChannel(cmd.channel);
-    if (!channel)
-        return NumericRepies::channelNotFound(serverName, cmd.channel, clients[cmd.client]);
-    if (!channel->isMember(cmd.client))
-        return NumericRepies::notChannelMember(cmd.channel, clients[cmd.client]);
-    for(auto [fd, client]:clients)
-    {
-        const std::string nick = client.getNick();
-        if (fd != cmd.client && nick == cmd.nick)
-        {
-            if (channel->isMember(fd))
-                return NumericRepies::isChannelMember(cmd.channel, clients[cmd.client], client);
-            channels.add(cmd.channel, fd);
-            std::string src = ":" + clients[cmd.client].getNick();
-            std::string body = src + " INVITE " + nick + " :#" + cmd.channel + "\r\n";
-            channel->invite(cmd.nick);
-            send(fd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
-            return;
-        }
-    }
-}
-
-
-void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
-{
-    if (cmd.channel[0] != '#')
-        return;
-    const std::string channel = cmd.channel.substr(1);
-    if (!channels.channelExist(channel))
-    {
-        NumericRepies::channelNotFound(serverName, cmd.channel, clients[cmd.client]);
-        return;
-    }
-    if (!channels.isMemberOfChannel(channel, cmd.client))
-        return NumericRepies::notChannelMember(channel, clients[cmd.client]);
-    Logger::info("Channel Mode: [" + std::to_string(channels.getChannelModes(channel)) + "]");
-    switch (cmd.mode) {
-        case INVITE_ONLY:
-            channels.updateChannelMode(channel, INVITE_ONLY, cmd.intent);
-            break;
-    }
-    Logger::info("Channel Mode: [" + std::to_string(channels.getChannelModes(channel)) + "]");
-}
-
-
-void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
-{
-    std::string channelName = cmd.channels.substr(1);
-    Channel *channel = channels.getChannel(channelName); // [TODO] handle multiple channels
-    Client &client = clients[cmd.client];
-    if (channel && (channel->getModes() & INVITE_ONLY) && !channel->isMember(cmd.client) && !channel->isInvited(client.getNick()))
-    {
-        Logger::info("Invite only");
-        NumericRepies::isInviteOnly(channelName, clients[cmd.client]);
-        return;
-    }
-    if (!channel)
-        channel = channels.newChannel(channelName);
-    else if (channel->isBlackListed(cmd.client))
-        return; // [TODO] handle
-    channel->addClient(cmd.client);
-    //channels.add(channelName, cmd.client);
-}
-
-void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
-{
-    clients[cmd.client].setFullname(cmd.fullName);
-    clients[cmd.client].setUsername(cmd.user);
-}
-
 void IrcServer::processRequest(int clientFd, const char *body, const size_t length)
 {
     Logger::info("Processing client request");
@@ -211,64 +109,7 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
         return;
     while(!cmds.empty())
     {
-        switch (cmds.front().type) {
-            case IrcCommand::CAP:
-                Logger::warning("Ignoring capability handshake");
-                break;
-            case IrcCommand::NICK:
-            {
-                std::string nick = cmds.front().payload.nick.nickname;
-                clients[clientFd].setNick(nick);
-                if (!authenticate(clients[clientFd]))
-                {
-                    Logger::info("Failed to authenticate client, booting them off from server");
-                    std::string body = NumericRepies::passMisMatch();
-                    send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
-                    clientDisconnected(clientFd);
-                    return;
-                }
-                std::string body = NumericRepies::welcome() + clients[clientFd].getNick() + " :Welcome to the Internet Relay Network " + clients[clientFd].getNick() + "\r\n";
-                send(clientFd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
-                break;
-            }
-            case IrcCommand::PASS:
-            {
-                clients[clientFd].setPass(cmds.front().payload.pass.password);
-                break;
-            }
-            case IrcCommand::JOIN:
-            {
-                HandleJoinCmd(cmds.front().payload.join);
-                break;
-            }
-            case IrcCommand::PRIVMSG:
-            {
-                HandlePrivMsgCmd(cmds.front().payload.privmsg);
-                break;
-            }
-            case IrcCommand::PING:
-            {
-                HandlePingCmd(cmds.front().payload.ping, "CHANGE_ME_SERVER_NAME");
-                break;
-            }
-            case IrcCommand::USER:
-            {
-                HandleUserCmd(cmds.front().payload.user);
-                break;
-            }
-            case IrcCommand::INVITE:
-            {
-                HandleInviteCmd(cmds.front().payload.invite);
-                break;
-            }
-            case IrcCommand::MODE:
-            {
-                HandleModeCmd(cmds.front().payload.mode);
-                break;
-            }
-            default:
-                break;
-        }
+        handleCmd(cmds.front());
         cmds.pop();
     }
 }
@@ -318,4 +159,156 @@ bool IrcServer::authenticate(const Client &client)
     Logger::info(password);
     Logger::info(client.getPass() == password ? "yay" : "nay");
     return client.getPass() == password;
+}
+
+
+// Handlers
+void IrcServer::handleCmd(const IrcCommand &cmd)
+{
+    static std::unordered_map<IrcCommand::Type, CmdHandler> handlers = {
+        {IrcCommand::CAP, &IrcServer::HandleCapCmd},
+        {IrcCommand::PASS, &IrcServer::HandlePassCmd},
+        {IrcCommand::USER, &IrcServer::HandleUserCmd},
+        {IrcCommand::NICK, &IrcServer::HandleNickCmd},
+        {IrcCommand::PING, &IrcServer::HandlePingCmd},
+        {IrcCommand::JOIN, &IrcServer::HandleJoinCmd},
+        {IrcCommand::PRIVMSG, &IrcServer::HandlePrivMsgCmd},
+        {IrcCommand::INVITE, &IrcServer::HandleInviteCmd},
+        {IrcCommand::MODE, &IrcServer::HandleModeCmd}
+    };
+    (this->*handlers[cmd.type])(&cmd.payload);
+}
+
+void IrcServer::HandlePingCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::PingCmd &cmd = payload->ping;
+    std::string src = ":";
+    std::string body = src + serverName + " " + cmd.token + "\r\n";
+    send(cmd.client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+
+}
+
+void IrcServer::HandlePrivMsgCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::PrivMsgCmd &cmd = payload->privmsg;
+    if (cmd.targets[0] == '#')
+    {
+        Channel *channel = channels.getChannel(cmd.targets.substr(1));
+        if (channel)
+            channel->sendMessage(clients[cmd.client], cmd.say_text);
+        return;
+    }
+    for(auto [fd, client]: clients)
+    {
+        std::string_view nick = client.getNick();
+        if (fd != cmd.client && nick == cmd.targets)
+        {
+            std::string src = ":" + clients[cmd.client].getNick();
+            std::string body = src + " PRIVMSG " + cmd.targets + " :" + cmd.say_text + "\r\n";
+            send(fd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+            return;
+        }
+    }
+    Logger::info("Not found user to send the message");
+}
+
+void IrcServer::HandleInviteCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::InviteCmd &cmd = payload->invite;
+    Channel *channel = channels.getChannel(cmd.channel);
+    if (!channel)
+        return NumericRepies::channelNotFound(serverName, cmd.channel, clients[cmd.client]);
+    if (!channel->isMember(cmd.client))
+        return NumericRepies::notChannelMember(cmd.channel, clients[cmd.client]);
+    for(auto [fd, client]:clients)
+    {
+        const std::string nick = client.getNick();
+        if (fd != cmd.client && nick == cmd.nick)
+        {
+            if (channel->isMember(fd))
+                return NumericRepies::isChannelMember(cmd.channel, clients[cmd.client], client);
+            channels.add(cmd.channel, fd);
+            std::string src = ":" + clients[cmd.client].getNick();
+            std::string body = src + " INVITE " + nick + " :#" + cmd.channel + "\r\n";
+            channel->invite(cmd.nick);
+            send(fd, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+            return;
+        }
+    }
+}
+
+void IrcServer::HandleModeCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::ModeCmd &cmd = payload->mode;
+    if (cmd.channel[0] != '#')
+        return;
+    const std::string channel = cmd.channel.substr(1);
+    if (!channels.channelExist(channel))
+    {
+        NumericRepies::channelNotFound(serverName, cmd.channel, clients[cmd.client]);
+        return;
+    }
+    if (!channels.isMemberOfChannel(channel, cmd.client))
+        return NumericRepies::notChannelMember(channel, clients[cmd.client]);
+    Logger::info("Channel Mode: [" + std::to_string(channels.getChannelModes(channel)) + "]");
+    switch (cmd.mode) {
+        case INVITE_ONLY:
+            channels.updateChannelMode(channel, INVITE_ONLY, cmd.intent);
+            break;
+    }
+    Logger::info("Channel Mode: [" + std::to_string(channels.getChannelModes(channel)) + "]");
+}
+
+void IrcServer::HandleJoinCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::JoinCmd &cmd = payload->join;
+    std::string channelName = cmd.channels.substr(1);
+    Channel *channel = channels.getChannel(channelName); // [TODO] handle multiple channels
+    Client &client = clients[cmd.client];
+    if (channel && (channel->getModes() & INVITE_ONLY) && !channel->isMember(cmd.client) && !channel->isInvited(client.getNick()))
+    {
+        Logger::info("Invite only");
+        NumericRepies::isInviteOnly(channelName, clients[cmd.client]);
+        return;
+    }
+    if (!channel)
+        channel = channels.newChannel(channelName);
+    else if (channel->isBlackListed(cmd.client))
+        return; // [TODO] handle
+    channel->addClient(cmd.client);
+}
+
+void IrcServer::HandleNickCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::NickCmd &cmd = payload->nick;
+    std::string nick = cmd.nickname;
+    clients[cmd.client].setNick(nick);
+    if (!authenticate(clients[cmd.client]))
+    {
+        Logger::info("Failed to authenticate client, booting them off from server");
+        std::string body = NumericRepies::passMisMatch();
+        send(cmd.client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+        clientDisconnected(cmd.client);
+        return;
+    }
+    std::string body = NumericRepies::welcome() + clients[cmd.client].getNick() + " :Welcome to the Internet Relay Network " + clients[cmd.client].getNick() + "\r\n";
+    send(cmd.client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+}
+
+void IrcServer::HandlePassCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::PassCmd &cmd = payload->pass;
+    clients[cmd.client].setPass(cmd.password);
+}
+void IrcServer::HandleCapCmd(const IrcCommand::CmdPayload *payload)
+{
+   (void) payload;
+   Logger::warning("Ignoring capability handshake");
+}
+
+void IrcServer::HandleUserCmd(const IrcCommand::CmdPayload *payload)
+{
+    const IrcCommand::UserCmd &cmd = payload->user;
+    clients[cmd.client].setFullname(cmd.fullName);
+    clients[cmd.client].setUsername(cmd.user);
 }
