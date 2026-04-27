@@ -227,7 +227,6 @@ void IrcServer::HandleInviteCmd(const IrcCommand::CmdPayload *payload)
         {
             if (channel->isMember(fd))
                 return NumericRepies::isChannelMember(cmd.channel, clients[cmd.client], client);
-            channels.add(cmd.channel, fd);
             std::string src = ":" + clients[cmd.client].getNick();
             std::string body = src + " INVITE " + nick + " :#" + cmd.channel + "\r\n";
             channel->invite(cmd.nick);
