@@ -2,6 +2,7 @@
 #include "server/Client.hpp"
 #include <string>
 #include <vector>
+#include "server/QueueMessages.hpp"
 
 enum Mode
 {
@@ -32,7 +33,7 @@ public:
     bool isInvited(const std::string &);
     void removeInvite(const std::string &);
     void addClient(int clientId);
-    void sendMessage(const Client &sender, const std::string &msg);
+    BroadcastMessage constructMessage(const Client &sender, const std::string &msg);
     uint8_t getModes();
     bool modeIsSet(Mode mode);
     void setMode(Mode mode);

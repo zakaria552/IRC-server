@@ -3,19 +3,17 @@
 #include "utils/Logger.hpp"
 #include <algorithm>
 #include <string>
-#include <sys/poll.h>
-#include <sys/socket.h>
 
 Channel::Channel(const std::string &name) : name(name){};
 
 bool Channel::isBlackListed(int clientId)
 {
-    return find(blackList.begin(), blackList.end(), clientId) != blackList.end();
+    return std::find(blackList.begin(), blackList.end(), clientId) != blackList.end();
 }
 
 bool Channel::isMember(int clientId)
 {
-    return find(clients.begin(), clients.end(), clientId) != clients.end();
+    return std::find(clients.begin(), clients.end(), clientId) != clients.end();
 }
 
 void Channel::addClient(int clientId)
@@ -23,17 +21,20 @@ void Channel::addClient(int clientId)
     clients.push_back(clientId);
 }
 
-void Channel::sendMessage(const Client &sender, const std::string &msg)
+BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg)
 {
+    BroadcastMessage msgQueue;
+    std::string src = ":" + sender.getNick();
+    std::string body = src + " PRIVMSG #" + name + " :" + msg + "\r\n";
+    msgQueue.msg = body;
     for(auto client: clients)
     {
         if (client == sender.getSocket())
             continue;
-        std::string src = ":" + sender.getNick();
-        std::string body = src + " PRIVMSG #" + name + " :" + msg + "\r\n";
-        send(client, body.c_str(), body.length(), MSG_DONTWAIT | MSG_NOSIGNAL);
+        msgQueue.clientFds.push_back(client);
         Logger::info("Sent message to client: " + std::to_string(client) + " , " + body);
     }
+    return msgQueue;
 }
 
 bool Channel::modeIsSet(Mode mode)
@@ -66,12 +67,12 @@ void Channel::invite(const std::string &user)
 }
 bool Channel::isInvited(const std::string &user)
 {
-    return find(inviteList.begin(), inviteList.end(), user) != inviteList.end();
+    return std::find(inviteList.begin(), inviteList.end(), user) != inviteList.end();
 }
 
 void Channel::removeInvite(const std::string &user)
 {
-    auto it = find(inviteList.begin(), inviteList.end(), user);
+    auto it = std::find(inviteList.begin(), inviteList.end(), user);
     if (it != inviteList.end())
         inviteList.erase(it);
 }
