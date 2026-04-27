@@ -1,7 +1,6 @@
 #ifndef _IRC_COMMANDS_HPP_
 #define _IRC_COMMANDS_HPP_
 
-#include <cstdint>
 enum Type
 {
     UNDEFINED,
