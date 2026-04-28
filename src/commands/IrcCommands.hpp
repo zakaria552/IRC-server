@@ -1,6 +1,7 @@
 #ifndef _IRC_COMMANDS_HPP_
 #define _IRC_COMMANDS_HPP_
 
+#include <string>
 enum Type
 {
     UNDEFINED,
@@ -45,8 +46,8 @@ struct PassCmd : public BaseCmd
 
 struct JoinCmd : public BaseCmd
 {
-    // UNDONE
-    std::string channels;
+    std::vector<std::string> channels;
+    std::vector<std::string> keys;
 };
 
 struct PrivMsgCmd : public BaseCmd
@@ -75,10 +76,12 @@ struct TopicCmd : public BaseCmd
 
 struct ModeCmd : public BaseCmd
 {
-    std::string channel;
     std::string target;
+    std::string key;
     uint8_t mode;
     char intent;
+    std::string raw;
+    int maxUser = -1;
 };
 
 union CmdPayload

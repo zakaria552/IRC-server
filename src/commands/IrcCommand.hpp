@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 /*
  * IrcCommand is a complicated data structure because it holds non-trivial data members
