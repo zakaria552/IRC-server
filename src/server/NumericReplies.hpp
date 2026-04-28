@@ -15,5 +15,7 @@ public:
     static Message notChannelMember(const std::string &channel, const Client &client);
     static Message isChannelMember(const std::string &channel, const Client &sender, const Client &receiver);
     static Message isInviteOnly(const std::string &channel, const Client &client);
+    static Message invalidChannelKey(const std::string &channel, const Client &client);
+//    static Message invalidModeParam(const std::string &channel, const Client &client);
     static Message setServerName(const std::string &name);
 };
