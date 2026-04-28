@@ -17,6 +17,26 @@ bool Channel::isMember(int clientId)
     return std::find(clients.begin(), clients.end(), clientId) != clients.end();
 }
 
+void Channel::setTopic(const std::string &topic)
+{
+    this->topic = topic;
+}
+
+void Channel::setKey(const std::string &key)
+{
+    this->key = key;
+}
+
+void Channel::setMaxUserLimit(unsigned int max)
+{
+    this->maxUsers = max;
+}
+
+bool Channel::isValidKey(const std::string &key)
+{
+   return this->key == key;
+}
+
 void Channel::addClient(int clientId)
 {
     clients.push_back(clientId);
@@ -37,10 +57,10 @@ BroadcastMessage Channel::constructMessage(const Client &sender, const std::stri
     }
     return msgQueue;
 }
-
+//      0101 & 1
 bool Channel::modeIsSet(Mode mode)
 {
-    return (modes >> mode) & 1;
+    return modes & mode;
 }
 void Channel::setMode(Mode mode)
 {
