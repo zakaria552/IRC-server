@@ -1,6 +1,7 @@
 #include "ChannelsManager.hpp"
 #include "server/Channel.hpp"
 #include "server/Client.hpp"
+#include "server/QueueMessages.hpp"
 #include "utils/Logger.hpp"
 
 
@@ -51,6 +52,15 @@ void ChannelsManager::sendMessage(const Client &sender, const std::string &targe
     Logger::info("Sent message");
 }
 
+
+void ChannelsManager::broadcastModeChange(const Client &client, const std::string &channel, const std::string &rawCmd)
+{
+    BroadcastMessage broadcast;
+    broadcast.clientFds = channels[channel].getClients();
+    broadcast.msg = ":" + client.getNick() + " " + rawCmd + "\r\n";
+    broadcast.totalSent = 0;
+    queue.push(broadcast);
+}
 
 bool ChannelsManager::channelExist(const std::string &channelName)
 {
