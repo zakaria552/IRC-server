@@ -2,6 +2,7 @@
 #define _IRC_COMMAND_HPP_
 
 #include <string>
+#include <vector>
 
 /*
  * IrcCommand is a complicated data structure because it holds non-trivial data members
