@@ -1,6 +1,7 @@
 #include "CommandParser.hpp"
 #include "commands/IrcCommand.hpp"
 #include "commands/RawIrcCommand.hpp"
+#include "server/Channel.hpp"
 #include "utils/Logger.hpp"
 #include <iostream>
 #include <optional>
@@ -117,6 +118,30 @@ static std::optional<IrcCommand> TryParseInvite(RawIrcCommand const& raw)
     return std::nullopt;
 }
 
+static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
+{
+    if (!raw.cmd.starts_with("MODE"))
+        return std::nullopt;
+    IrcCommand::ModeCmd cmd; // MODE #67 -i
+    int start = raw.cmd.find(' ', 5);
+    if (start < 0)
+        return std::nullopt;
+    std::string mode = raw.cmd.substr(start + 1);
+    cmd.channel = raw.cmd.substr(5, raw.cmd.find(' ') - 1);
+    if (mode.size() < 2)
+        return std::nullopt;
+    Logger::info("Channel-["+cmd.channel+"]");
+    switch (mode[1]) {
+        case 'i':
+            cmd.mode = INVITE_ONLY;
+            cmd.intent = mode[0];
+            break;
+        default:
+            Logger::warning("Mode [" + mode + "] is not supported");
+            break;
+    }
+    return IrcCommand(cmd);
+}
 
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int clientFd)
 {
@@ -190,6 +215,15 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         {
             std::cerr << "Successfully parsed a INVITE command.\r\n";
             cmd.value().payload.invite.client = clientFd;
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParseMode(raw);
+        if (cmd.has_value())
+        {
+            std::cerr << "Successfully parsed a Mode command.\r\n";
+            cmd.value().payload.mode.client = clientFd;
             return cmd;
         }
     }

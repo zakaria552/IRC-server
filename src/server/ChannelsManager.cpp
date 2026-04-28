@@ -3,6 +3,18 @@
 #include "server/Client.hpp"
 #include "utils/Logger.hpp"
 
+
+ChannelsManager::ChannelsManager(std::queue<BroadcastMessage> &queue)
+    : queue(queue)
+{
+
+}
+
+Channel *ChannelsManager::newChannel(const std::string &channel)
+{
+    channels[channel] = Channel(channel);
+    return &channels[channel];
+}
 void ChannelsManager::add(const std::string &channel, int clientId)
 {
     Channel *room;
@@ -35,14 +47,14 @@ void ChannelsManager::sendMessage(const Client &sender, const std::string &targe
         Logger::info("Channel not found: [" + room + "]");
         return;
     }
-    channels[room].sendMessage(sender, msg);
+    queue.push(channels[room].constructMessage(sender, msg));
     Logger::info("Sent message");
 }
 
 
-bool ChannelsManager::channelExist(const std::string &channel)
+bool ChannelsManager::channelExist(const std::string &channelName)
 {
-    return channels.find(channel) != channels.end();
+    return channels.find(channelName) != channels.end();
 }
 
 bool ChannelsManager::isMemberOfChannel(const std::string &channel, int client)
@@ -51,4 +63,22 @@ bool ChannelsManager::isMemberOfChannel(const std::string &channel, int client)
     if (it != channels.end())
         return it->second.isMember(client);
     return false;
+}
+
+void ChannelsManager::updateChannelMode(const std::string &channel, Mode mode, char intent)
+{
+    if (intent == '-')
+        channels[channel].unsetMode(mode);
+    else if (intent == '+')
+        channels[channel].setMode(mode);
+}
+
+uint8_t ChannelsManager::getChannelModes(const std::string &channel)
+{
+   return channels[channel].getModes();
+}
+
+Channel *ChannelsManager::getChannel(const std::string &channel)
+{
+    return channelExist(channel) ? &channels[channel] : nullptr;
 }

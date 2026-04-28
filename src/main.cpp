@@ -1,4 +1,3 @@
-#include "commands/IrcCommand.hpp"
 #include "irc.hpp"
 
 #include <unistd.h> // DELETEME!!!
@@ -12,7 +11,7 @@ int main(int argc, char **args)
     }
     try
     {
-        irc::server server(args[1], args[2]);
+        irc::server server(DEFAULT_SERVER_NAME, args[1], args[2]);
         server.start();
     } catch(std::exception &err)
     {
