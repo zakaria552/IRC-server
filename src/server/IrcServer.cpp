@@ -272,41 +272,63 @@ void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
 
 void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
 {
-    if (cmd.channel[0] != '#')
+    if (cmd.target[0] != '#')
         return;
-    const std::string channel = cmd.channel.substr(1);
-    if (!channels.channelExist(channel))
+    const std::string channelName = cmd.target.substr(1);
+    if (!channels.channelExist(channelName))
     {
-        queueMessages.push(NumericReplies::channelNotFound(cmd.channel, clients[cmd.client]));
+        queueMessages.push(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
         return;
     }
-    if (!channels.isMemberOfChannel(channel, cmd.client))
-        return queueMessages.push(NumericReplies::notChannelMember(channel, clients[cmd.client]));
-    Logger::info("Channel Mode: [" + std::to_string(channels.getChannelModes(channel)) + "]");
+    if (!channels.isMemberOfChannel(channelName, cmd.client))
+        return queueMessages.push(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
+    Channel *channel = channels.getChannel(channelName);
     switch (cmd.mode) {
         case INVITE_ONLY:
-            channels.updateChannelMode(channel, INVITE_ONLY, cmd.intent);
+            channels.updateChannelMode(channelName, INVITE_ONLY, cmd.intent);
+            break;
+        case REQUIRE_PASS:
+            if (cmd.intent == '+' && cmd.key.empty())
+                return; // [TODO] handle invalid mode params
+            channels.updateChannelMode(channelName, REQUIRE_PASS, cmd.intent);
+            channel->setKey(cmd.key);
+            break;
+        case USER_LIMIT:
+            channels.updateChannelMode(channelName, USER_LIMIT, cmd.intent);
+            channel->setMaxUserLimit(cmd.maxUser);
+            break;
+        case RESTRICT_TOPIC:
+            channels.updateChannelMode(channelName, RESTRICT_TOPIC, cmd.intent);
             break;
     }
-    Logger::info("Channel Mode: [" + std::to_string(channels.getChannelModes(channel)) + "]");
+    channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
 }
 
 void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
 {
-    std::string channelName = cmd.channels.substr(1);
-    Channel *channel = channels.getChannel(channelName); // [TODO] handle multiple channels
     Client &client = clients[cmd.client];
-    if (channel && (channel->getModes() & INVITE_ONLY) && !channel->isMember(cmd.client) && !channel->isInvited(client.getNick()))
+    for(size_t i = 0; i < cmd.channels.size(); i++)
     {
-        Logger::info("Invite only");
-        queueMessages.push(NumericReplies::isInviteOnly(channelName, clients[cmd.client]));
-        return;
+        std::string channelName = cmd.channels[i].substr(1);
+        Channel *channel = channels.getChannel(channelName);
+        if (channel && channel->isMember(cmd.client))
+            continue;
+        if (channel && channel->modeIsSet(INVITE_ONLY) && !channel->isInvited(client.getNick()))
+        {
+            queueMessages.push(NumericReplies::isInviteOnly(channelName, clients[cmd.client]));
+            continue;
+        }
+        if (channel && channel->modeIsSet(REQUIRE_PASS) && (cmd.keys.size() <= i || !channel->isValidKey(cmd.keys[i])))
+        {
+            queueMessages.push(NumericReplies::invalidChannelKey(channelName, clients[cmd.client]));
+            continue;
+        }
+        if (!channel)
+            channel = channels.newChannel(channelName);
+        else if (channel->isBlackListed(cmd.client))
+            continue; // [TODO] handle
+        channel->addClient(cmd.client);
     }
-    if (!channel)
-        channel = channels.newChannel(channelName);
-    else if (channel->isBlackListed(cmd.client))
-        return; // [TODO] handle
-    channel->addClient(cmd.client);
 }
 
 void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
