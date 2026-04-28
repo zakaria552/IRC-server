@@ -4,7 +4,7 @@
 #include <vector>
 #include "server/QueueMessages.hpp"
 
-enum Mode
+enum Mode: uint8_t
 {
    NONE = 0,
    INVITE_ONLY = 1 << 0,
@@ -18,6 +18,7 @@ class Channel
 {
     std::string name;
     std::string topic;
+    std::string key;
     std::vector<int> clients;
     std::vector<int> blackList;
     std::vector<std::string> inviteList;
@@ -29,12 +30,17 @@ public:
     ~Channel() = default;
     bool isBlackListed(int clientId);
     bool isMember(int clientId);
+    void setTopic(const std::string &toic);
+    void setKey(const std::string &key);
+    void setMaxUserLimit(unsigned int max);
+    bool isValidKey(const std::string &key);
     void invite(const std::string &);
     bool isInvited(const std::string &);
     void removeInvite(const std::string &);
     void addClient(int clientId);
     BroadcastMessage constructMessage(const Client &sender, const std::string &msg);
     uint8_t getModes();
+    const std::vector<int> &getClients();
     bool modeIsSet(Mode mode);
     void setMode(Mode mode);
     void unsetMode(Mode mode);
