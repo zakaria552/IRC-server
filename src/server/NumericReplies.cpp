@@ -31,6 +31,10 @@ Message NumericReplies::isInviteOnly(const std::string &channel, const Client &c
     return {client.getSocket(), NumericReplies::makeBody(473, client.getNick(), channel, "Cannot join channel (+i)")};
 }
 
+Message NumericReplies::invalidChannelKey(const std::string &channel, const Client &client)
+{
+    return {client.getSocket(), NumericReplies::makeBody(475, client.getNick(), channel, "Cannot join channel (+k)")};
+}
 
 std::string NumericReplies::welcome()
 {
