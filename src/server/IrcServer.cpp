@@ -350,7 +350,7 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
     Channel *channel = channels.getChannel(channelName);
     if (!channel)
     {
-        queueMessages.push(NumericReplies::channelNotFound(cmd.channel, clients[cmd.client]));
+        queueMessages.push(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
         return;
     }
     if (!channel->isMember(cmd.client))
@@ -358,14 +358,19 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
         queueMessages.push(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
         return;
     }
-    // TOPIC with no topic text - query mode
+    // TOPIC with no colon present - query mode
     if (!cmd.topicProvided)
     {
         const std::string &topic = channel->getTopic();
         if (topic.empty())
+        {
             queueMessages.push({cmd.client, NumericReplies::noTopicReply(channelName, clients[cmd.client].getNick())});
+        }
         else
+        {
             queueMessages.push({cmd.client, NumericReplies::topicReply(channelName, clients[cmd.client].getNick(), topic)});
+            queueMessages.push({cmd.client, NumericReplies::topicSetBy(channelName, clients[cmd.client].getNick(), channel->getTopicSetter(), channel->getTopicTime())});
+        }
         return;
     }
     // If +t mode is set, only ops can change the topic
@@ -374,8 +379,12 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
         queueMessages.push({cmd.client, NumericReplies::makeBody(482, clients[cmd.client].getNick(), channelName, "You're not channel operator")});
         return;
     }
-    // Set the topic
+    // Set or clear the topic
     channel->setTopic(cmd.topic);
+    if (!cmd.topic.empty())
+    {
+        channel->setTopicSetter(clients[cmd.client].getNick());
+    }
     // Broadcast the topic change to all channel members
     BroadcastMessage broadcast;
     std::string msg = ":" + clients[cmd.client].getNick() + " TOPIC #" + channelName + " :" + cmd.topic + "\r\n";

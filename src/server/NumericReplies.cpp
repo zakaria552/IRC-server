@@ -50,3 +50,8 @@ std::string NumericReplies::noTopicReply(const std::string &channel, const std::
 {
     return ":" + serverName + " 331 " + nick + " #" + channel + " :No topic is set\r\n";
 }
+
+std::string NumericReplies::topicSetBy(const std::string &channel, const std::string &nick, const std::string &setter, const std::string &time)
+{
+    return ":" + serverName + " 333 " + nick + " #" + channel + " " + setter + " " + time + "\r\n";
+}

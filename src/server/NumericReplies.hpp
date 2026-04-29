@@ -13,6 +13,7 @@ public:
     static std::string passMisMatch();
     static std::string topicReply(const std::string &channel, const std::string &nick, const std::string &topic);
     static std::string noTopicReply(const std::string &channel, const std::string &nick);
+    static std::string topicSetBy(const std::string &channel, const std::string &nick, const std::string &setter, const std::string &time);
     static Message channelNotFound(const std::string &channel, const Client &client);
     static Message notChannelMember(const std::string &channel, const Client &client);
     static Message isChannelMember(const std::string &channel, const Client &sender, const Client &receiver);

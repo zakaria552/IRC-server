@@ -18,6 +18,8 @@ class Channel
 {
     std::string name;
     std::string topic;
+    std::string topicSetter;
+    std::string topicTime;
     std::vector<int> clients;
     std::vector<int> blackList;
     std::vector<std::string> inviteList;
@@ -41,5 +43,10 @@ public:
     const std::string &getName() const;
     const std::string &getTopic() const;
     void setTopic(const std::string &topic);
+    const std::string &getTopicSetter() const;
+    void setTopicSetter(const std::string &setter);
+    const std::string &getTopicTime() const;
+    bool hasTopic() const;
+    void clearTopicMetadata();
     const std::vector<int> &getClients() const;
 };

@@ -87,7 +87,6 @@ IrcCommand::IrcCommand(IrcCommand&& other) noexcept
             new (&payload.topic) TopicCmd(std::move(other.payload.topic));
             break;
     }
-    other.type = Type::UNDEFINED; // CHECK THIS!
 }
 
 IrcCommand::IrcCommand(CapCmd cmd)

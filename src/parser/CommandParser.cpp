@@ -147,10 +147,15 @@ static std::optional<IrcCommand> TryParseTopic(RawIrcCommand const& raw)
 {
     if (!raw.cmd.starts_with("TOPIC"))
         return std::nullopt;
+    // Must have at least "TOPIC " (6 chars) to contain a channel argument
+    if (raw.cmd.size() <= 6 or raw.cmd[5] != ' ')
+        return std::nullopt;
     IrcCommand::TopicCmd cmd;
     size_t start = 6; // after "TOPIC "
     size_t end = raw.cmd.find(' ', start);
     cmd.channel = raw.cmd.substr(start, end - start);
+    if (cmd.channel.empty())
+        return std::nullopt;
     size_t colonPos = raw.cmd.find(':');
     if (colonPos != std::string::npos) {
         cmd.topic = raw.cmd.substr(colonPos + 1);
