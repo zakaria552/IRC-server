@@ -42,9 +42,8 @@ public:
     void unsetMode(Mode mode);
     const std::string &getName() const;
     const std::string &getTopic() const;
-    void setTopic(const std::string &topic);
+    void setTopic(const std::string &topic, const std::string &setter = "");
     const std::string &getTopicSetter() const;
-    void setTopicSetter(const std::string &setter);
     const std::string &getTopicTime() const;
     bool hasTopic() const;
     void clearTopicMetadata();

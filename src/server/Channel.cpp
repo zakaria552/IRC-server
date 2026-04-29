@@ -66,6 +66,7 @@ void Channel::invite(const std::string &user)
 {
     inviteList.push_back(user);
 }
+
 bool Channel::isInvited(const std::string &user)
 {
     return std::find(inviteList.begin(), inviteList.end(), user) != inviteList.end();
@@ -81,40 +82,45 @@ const std::string &Channel::getTopic() const
 {
     return topic;
 }
-void Channel::setTopic(const std::string &topic)
+
+void Channel::setTopic(const std::string &topic, const std::string &setter)
 {
     this->topic = topic;
-    if (topic.empty()) {
+    if (topic.empty())
+    {
         topicSetter.clear();
         topicTime.clear();
-    } else {
+    }
+    else
+    {
+        topicSetter = setter;
         std::time_t now = std::time(nullptr);
         topicTime = std::to_string(now);
-        // setter will be set by caller
     }
 }
+
 const std::string &Channel::getTopicSetter() const
 {
     return topicSetter;
 }
-void Channel::setTopicSetter(const std::string &setter)
-{
-    topicSetter = setter;
-}
+
 const std::string &Channel::getTopicTime() const
 {
     return topicTime;
 }
+
 bool Channel::hasTopic() const
 {
     return !topic.empty();
 }
+
 void Channel::clearTopicMetadata()
 {
     topic.clear();
     topicSetter.clear();
     topicTime.clear();
 }
+
 const std::vector<int> &Channel::getClients() const
 {
     return clients;

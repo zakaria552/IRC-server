@@ -380,12 +380,7 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
         return;
     }
     // Set or clear the topic
-    channel->setTopic(cmd.topic);
-    if (!cmd.topic.empty())
-    {
-        channel->setTopicSetter(clients[cmd.client].getNick());
-    }
-    // Broadcast the topic change to all channel members
+    channel->setTopic(cmd.topic, clients[cmd.client].getNick());
     BroadcastMessage broadcast;
     std::string msg = ":" + clients[cmd.client].getNick() + " TOPIC #" + channelName + " :" + cmd.topic + "\r\n";
     broadcast.msg = msg;
