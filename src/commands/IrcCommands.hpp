@@ -13,6 +13,7 @@ enum Type
     PRIVMSG,
     PING,
     MODE,
+    TOPIC,
 };
 
 struct BaseCmd
@@ -65,6 +66,13 @@ struct InviteCmd : public BaseCmd
     std::string channel;
 };
 
+struct TopicCmd : public BaseCmd
+{
+    std::string channel;
+    std::string topic;
+    bool topicProvided = false;
+};
+
 struct ModeCmd : public BaseCmd
 {
     std::string channel;
@@ -84,6 +92,7 @@ union CmdPayload
     PrivMsgCmd privmsg;
     PingCmd ping;
     ModeCmd mode;
+    TopicCmd topic;
 
     CmdPayload();
     ~CmdPayload();

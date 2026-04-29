@@ -27,6 +27,7 @@ struct IrcCommand
     IrcCommand(PingCmd);
     IrcCommand(InviteCmd);
     IrcCommand(ModeCmd);
+    IrcCommand(TopicCmd);
 
     IrcCommand(IrcCommand&&) noexcept;
 

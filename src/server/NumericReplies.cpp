@@ -40,3 +40,13 @@ std::string NumericReplies::welcome()
 std::string NumericReplies::passMisMatch() {
     return "464 : Invalid password\r\n";
 };
+
+std::string NumericReplies::topicReply(const std::string &channel, const std::string &nick, const std::string &topic)
+{
+    return ":" + serverName + " 332 " + nick + " #" + channel + " :" + topic + "\r\n";
+}
+
+std::string NumericReplies::noTopicReply(const std::string &channel, const std::string &nick)
+{
+    return ":" + serverName + " 331 " + nick + " #" + channel + " :No topic is set\r\n";
+}

@@ -76,3 +76,15 @@ void Channel::removeInvite(const std::string &user)
     if (it != inviteList.end())
         inviteList.erase(it);
 }
+const std::string &Channel::getTopic() const
+{
+    return topic;
+}
+void Channel::setTopic(const std::string &topic)
+{
+    this->topic = topic;
+}
+const std::vector<int> &Channel::getClients() const
+{
+    return clients;
+}

@@ -144,6 +144,9 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
             case IrcCommand::MODE:
                 HandleModeCmd(cmds.front().payload.mode);
                 break;
+            case IrcCommand::TOPIC:
+                HandleTopicCmd(cmds.front().payload.topic);
+                break;
         }
         cmds.pop();
     }
@@ -339,4 +342,46 @@ void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
 {
     clients[cmd.client].setFullname(cmd.fullName);
     clients[cmd.client].setUsername(cmd.user);
+}
+
+void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
+{
+    std::string channelName = cmd.channel.substr(cmd.channel.find('#') + 1);
+    Channel *channel = channels.getChannel(channelName);
+    if (!channel)
+    {
+        queueMessages.push(NumericReplies::channelNotFound(cmd.channel, clients[cmd.client]));
+        return;
+    }
+    if (!channel->isMember(cmd.client))
+    {
+        queueMessages.push(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
+        return;
+    }
+    // TOPIC with no topic text - query mode
+    if (!cmd.topicProvided)
+    {
+        const std::string &topic = channel->getTopic();
+        if (topic.empty())
+            queueMessages.push({cmd.client, NumericReplies::noTopicReply(channelName, clients[cmd.client].getNick())});
+        else
+            queueMessages.push({cmd.client, NumericReplies::topicReply(channelName, clients[cmd.client].getNick(), topic)});
+        return;
+    }
+    // If +t mode is set, only ops can change the topic
+    if (channel->modeIsSet(RESTRICT_TOPIC) && !clients[cmd.client].isOperator())
+    {
+        queueMessages.push({cmd.client, NumericReplies::makeBody(482, clients[cmd.client].getNick(), channelName, "You're not channel operator")});
+        return;
+    }
+    // Set the topic
+    channel->setTopic(cmd.topic);
+    // Broadcast the topic change to all channel members
+    BroadcastMessage broadcast;
+    std::string msg = ":" + clients[cmd.client].getNick() + " TOPIC #" + channelName + " :" + cmd.topic + "\r\n";
+    broadcast.msg = msg;
+    const std::vector<int> &members = channel->getClients();
+    broadcast.clientFds = members;
+    broadcast.totalSent = 0;
+    queueBroadcastMessages.push(broadcast);
 }

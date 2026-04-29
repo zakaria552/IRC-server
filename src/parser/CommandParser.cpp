@@ -143,6 +143,22 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
     return IrcCommand(cmd);
 }
 
+static std::optional<IrcCommand> TryParseTopic(RawIrcCommand const& raw)
+{
+    if (!raw.cmd.starts_with("TOPIC"))
+        return std::nullopt;
+    IrcCommand::TopicCmd cmd;
+    size_t start = 6; // after "TOPIC "
+    size_t end = raw.cmd.find(' ', start);
+    cmd.channel = raw.cmd.substr(start, end - start);
+    size_t colonPos = raw.cmd.find(':');
+    if (colonPos != std::string::npos) {
+        cmd.topic = raw.cmd.substr(colonPos + 1);
+        cmd.topicProvided = true;
+    }
+    return IrcCommand(cmd);
+}
+
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int clientFd)
 {
     Logger::info(raw.cmd);
@@ -224,6 +240,15 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         {
             std::cerr << "Successfully parsed a Mode command.\r\n";
             cmd.value().payload.mode.client = clientFd;
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParseTopic(raw);
+        if (cmd.has_value())
+        {
+            std::cerr << "Successfully parsed a TOPIC command.\r\n";
+            cmd.value().payload.topic.client = clientFd;
             return cmd;
         }
     }

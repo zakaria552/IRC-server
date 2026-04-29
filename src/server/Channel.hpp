@@ -22,7 +22,7 @@ class Channel
     std::vector<int> blackList;
     std::vector<std::string> inviteList;
     uint8_t modes = INVITE_ONLY; // unspecified for now
-    unsigned int maxUsers;
+    [[maybe_unused]] unsigned int maxUsers;
 public:
     Channel() = default;
     Channel(const std::string &name);
@@ -39,4 +39,7 @@ public:
     void setMode(Mode mode);
     void unsetMode(Mode mode);
     const std::string &getName() const;
+    const std::string &getTopic() const;
+    void setTopic(const std::string &topic);
+    const std::vector<int> &getClients() const;
 };
