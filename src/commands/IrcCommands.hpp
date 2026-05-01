@@ -78,10 +78,11 @@ struct ModeCmd : public BaseCmd
 {
     std::string target;
     std::string key;
+    std::string nick;
     uint8_t mode;
     char intent;
     std::string raw;
-    int maxUser = -1;
+    int maxUser;
 };
 
 union CmdPayload
