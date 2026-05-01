@@ -276,32 +276,60 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
         return;
     const std::string channelName = cmd.target.substr(1);
     if (!channels.channelExist(channelName))
-    {
-        queueMessages.push(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
-        return;
-    }
+        return queueMessages.push(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
     if (!channels.isMemberOfChannel(channelName, cmd.client))
         return queueMessages.push(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
     Channel *channel = channels.getChannel(channelName);
+    if (cmd.mode == NONE)
+        return queueMessages.push(NumericReplies::listModes(channelName, channel->listModes(), clients[cmd.client]));
+    if (!channel->isOperator(cmd.client))
+        return queueMessages.push(NumericReplies::isNotOperator(channelName, clients[cmd.client]));
     switch (cmd.mode) {
         case INVITE_ONLY:
+        {
             channels.updateChannelMode(channelName, INVITE_ONLY, cmd.intent);
+            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
             break;
+        }
         case REQUIRE_PASS:
+        {
             if (cmd.intent == '+' && cmd.key.empty())
                 return; // [TODO] handle invalid mode params
             channels.updateChannelMode(channelName, REQUIRE_PASS, cmd.intent);
             channel->setKey(cmd.key);
+            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
             break;
+        }
         case USER_LIMIT:
+        {
+            if (cmd.maxUser < 0)
+                return queueMessages.push(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + std::to_string(cmd.maxUser), "Can't be negative"));
             channels.updateChannelMode(channelName, USER_LIMIT, cmd.intent);
-            channel->setMaxUserLimit(cmd.maxUser);
+            if (cmd.intent == '+')
+                channel->setMaxUserLimit(cmd.maxUser);
+            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
             break;
+        }
         case RESTRICT_TOPIC:
+        {
             channels.updateChannelMode(channelName, RESTRICT_TOPIC, cmd.intent);
+            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
+            break;
+        }
+        case OP_PRIVILEGE:
+        {
+            Client *target = getClientByNick(cmd.nick);
+            if (!target)
+               return queueMessages.push(NumericReplies::noSuchUser(clients[cmd.client], cmd.nick));
+            if (!channels.isMemberOfChannel(channelName, target->getSocket()))
+                return queueMessages.push(NumericReplies::userNotInChannel(channelName, clients[cmd.client], *target));
+            channel->updateOperators(target->getSocket(), cmd.intent == '+');
+            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
+            break;
+        }
+        default:
             break;
     }
-    channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
 }
 
 void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
@@ -323,11 +351,18 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
             queueMessages.push(NumericReplies::invalidChannelKey(channelName, clients[cmd.client]));
             continue;
         }
+        if (channel && channel->modeIsSet(USER_LIMIT) && channel->isFull())
+        {
+            queueMessages.push(NumericReplies::channelIsFull(channelName, clients[cmd.client]));
+            continue;
+        }
         if (!channel)
             channel = channels.newChannel(channelName);
         else if (channel->isBlackListed(cmd.client))
             continue; // [TODO] handle
         channel->addClient(cmd.client);
+        channels.broadcastJoinedUser(client, channelName);
+        sendListOfUsers(client, channel);
     }
 }
 
@@ -351,6 +386,7 @@ void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 {
     clients[cmd.client].setPass(cmd.password);
 }
+
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
 {
    (void) cmd;
@@ -361,4 +397,32 @@ void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
 {
     clients[cmd.client].setFullname(cmd.fullName);
     clients[cmd.client].setUsername(cmd.user);
+}
+
+void IrcServer::sendListOfUsers(const Client &client, Channel *channel)
+{
+    Message message; //"<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
+    const std::string body = ":" + serverName + " 353 " + client.getNick() + " =" + " #" + channel->getName() + " :";
+    const std::vector<int> users = channel->getClients();
+    message.clientFd = client.getSocket();
+    for(size_t i = 0; i < users.size(); i++)
+    {
+        Client &member = clients[users[i]];
+        std::string opPrefix = channel->isOperator(member.getSocket()) ? "@" : "";
+        message.msg = body + opPrefix + member.getNick() + "\r\n";
+        queueMessages.push(message);
+    }
+    //:server 366 alice #chat :End of /NAMES list
+    message.msg = ":" + serverName + " 366 " + client.getNick() + " #" + channel->getName() + " :End of /NAMES list\r\n";
+    queueMessages.push(message);
+}
+
+Client *IrcServer::getClientByNick(const std::string &nick)
+{
+    for(auto &[fd, client] : clients)
+    {
+        if (client.getNick() == nick)
+            return &client;
+    }
+    return nullptr;
 }
