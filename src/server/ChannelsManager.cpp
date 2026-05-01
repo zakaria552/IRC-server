@@ -62,6 +62,15 @@ void ChannelsManager::broadcastModeChange(const Client &client, const std::strin
     queue.push(broadcast);
 }
 
+void ChannelsManager::broadcastJoinedUser(const Client &client, const std::string &channel)
+{
+    BroadcastMessage broadcast; //:WiZ JOIN #Twilight_zone
+    broadcast.clientFds = channels[channel].getClients();
+    broadcast.msg = ":" + client.getNick() + " JOIN " + "#" + channel + "\r\n";
+    broadcast.totalSent = 0;
+    queue.push(broadcast);
+}
+
 bool ChannelsManager::channelExist(const std::string &channelName)
 {
     return channels.find(channelName) != channels.end();
