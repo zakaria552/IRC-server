@@ -145,15 +145,19 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
     IrcCommand::ModeCmd cmd; // MODE #67 -i
     std::vector<std::string> tokens = splitToTokens(raw.cmd, ' ');
     std::vector<std::string> modeArgs;
-    std::string mode;
+    std::string mode{};
+    cmd.raw = raw.cmd;
     try {
         cmd.target = tokens.at(1);
         mode = tokens.at(2);
-        try {
-            modeArgs.assign(tokens.begin() + 3, tokens.end()) ;
-        } catch (...) {}
     } catch (...) {
-        return std::nullopt;
+        cmd.mode = NONE;
+        cmd.raw = raw.cmd;
+        return cmd;
+    }
+    try {
+        modeArgs.assign(tokens.begin() + 3, tokens.end()) ;
+    } catch(...) {
     }
     switch (mode[1]) {
         case 'i':
@@ -171,10 +175,26 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
             cmd.intent = mode[0];
             break;
         case 'l':
+        {
             cmd.mode = USER_LIMIT;
             cmd.intent = mode[0];
+            if (cmd.intent != '+')
+            {
+                cmd.raw = tokens[0] + " " + cmd.target + " -l";
+                break;
+            }
             try {
                 cmd.maxUser = std::stoi(modeArgs.at(0));
+            } catch (...) {
+                return std::nullopt;
+            }
+            break;
+        }
+        case 'o':
+            cmd.mode = OP_PRIVILEGE;
+            cmd.intent = mode[0];
+            try {
+                cmd.nick = modeArgs.at(0);
             } catch (...) {
                 return std::nullopt;
             }
@@ -183,7 +203,6 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
             Logger::warning("Mode [" + mode + "] is not supported");
             break;
     }
-    cmd.raw = raw.cmd;
     return IrcCommand(cmd);
 }
 
