@@ -18,4 +18,11 @@ public:
     static Message invalidChannelKey(const std::string &channel, const Client &client);
 //    static Message invalidModeParam(const std::string &channel, const Client &client);
     static Message setServerName(const std::string &name);
+    static Message noSuchUser(const Client &client, const std::string &targetNick);
+    static Message userNotInChannel(const std::string &channel, const Client &client, const Client &target);
+    static Message channelIsFull(const std::string &channel, const Client &client);
+    // modes
+    static Message isNotOperator(const std::string &channel, const Client &client);
+    static Message listModes(const std::string &channel, const std::string &modes, const Client &client);
+    static Message invalidModeParams(const std::string &channel, const Client &client, const std::string &mode, const std::string &description);
 };
