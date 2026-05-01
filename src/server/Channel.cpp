@@ -1,5 +1,6 @@
 #include "Channel.hpp"
 #include "server/Client.hpp"
+#include "server/QueueMessages.hpp"
 #include "utils/Logger.hpp"
 #include <algorithm>
 #include <string>
@@ -38,6 +39,7 @@ bool Channel::isValidKey(const std::string &key)
 
 void Channel::addClient(int clientId)
 {
+    operators[clientId] = (clients.size() == 0);
     clients.push_back(clientId);
 }
 
@@ -57,7 +59,7 @@ BroadcastMessage Channel::constructMessage(const Client &sender, const std::stri
     return msgQueue;
 }
 //      0101 & 1
-bool Channel::modeIsSet(Mode mode)
+bool Channel::modeIsSet(Mode mode) const
 {
     return modes & mode;
 }
@@ -97,7 +99,44 @@ void Channel::removeInvite(const std::string &user)
         inviteList.erase(it);
 }
 
-const std::vector<int> &Channel::getClients()
+const std::vector<int> &Channel::getClients() const
 {
     return clients;
+}
+
+void Channel::updateOperators(int clientFd, bool isOperator)
+{
+    operators[clientFd] = isOperator;
+}
+
+bool Channel::isOperator(int clientFd)
+{
+    return operators[clientFd];
+}
+
+std::string Channel::listModes() const
+{
+    std::string modes = "+";
+    std::string modeArgs = "";
+    if (modeIsSet(INVITE_ONLY))
+        modes += "i";
+    if (modeIsSet(RESTRICT_TOPIC))
+        modes += "t";
+    if (modeIsSet(REQUIRE_PASS))
+    {
+        modes += "k";
+        modeArgs += " " + key;
+    }
+    if (modeIsSet(USER_LIMIT))
+    {
+        modes += "l";
+        modeArgs += " " + std::to_string(maxUsers);
+    }
+    return modes + modeArgs;
+}
+
+
+bool Channel::isFull()
+{
+    return modeIsSet(USER_LIMIT) && clients.size() >= maxUsers;
 }
