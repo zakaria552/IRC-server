@@ -13,7 +13,7 @@ std::string NumericReplies::makeBody(int errCode, const std::string &nick, const
 
 Message NumericReplies::channelNotFound(const std::string &channel, const Client &client)
 {
-    return {client.getSocket(), NumericReplies::makeBody(402, client.getNick(), channel, "No such channel")};
+    return {client.getSocket(), NumericReplies::makeBody(403, client.getNick(), channel, "No such channel")};
 }
 
 Message NumericReplies::notChannelMember(const std::string &channel, const Client &client)
