@@ -47,6 +47,5 @@ public:
     const std::string &getTopicSetter() const;
     const std::string &getTopicTime() const;
     bool hasTopic() const;
-    void clearTopicMetadata();
     const std::vector<int> &getClients() const;
 };
