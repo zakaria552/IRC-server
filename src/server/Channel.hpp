@@ -1,5 +1,6 @@
 #pragma once
 #include "server/Client.hpp"
+#include <cstdint>
 #include <string>
 #include <vector>
 #include "server/QueueMessages.hpp"

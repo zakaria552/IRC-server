@@ -1,6 +1,7 @@
 #ifndef _IRC_COMMAND_HPP_
 #define _IRC_COMMAND_HPP_
 
+#include <cstdint>
 #include <string>
 
 /*

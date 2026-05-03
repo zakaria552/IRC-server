@@ -43,12 +43,12 @@ std::string NumericReplies::passMisMatch() {
 
 std::string NumericReplies::topicReply(const std::string &channel, const std::string &nick, const std::string &topic)
 {
-    return ":" + serverName + " 332 " + nick + " #" + channel + " :" + topic + "\r\n";
+    return makeBody(332, nick, channel, topic);
 }
 
 std::string NumericReplies::noTopicReply(const std::string &channel, const std::string &nick)
 {
-    return ":" + serverName + " 331 " + nick + " #" + channel + " :No topic is set\r\n";
+    return makeBody(331, nick, channel, "No topic is set");
 }
 
 std::string NumericReplies::topicSetBy(const std::string &channel, const std::string &nick, const std::string &setter, const std::string &time)
