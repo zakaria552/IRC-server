@@ -114,13 +114,6 @@ bool Channel::hasTopic() const
     return !topic.empty();
 }
 
-void Channel::clearTopicMetadata()
-{
-    topic.clear();
-    topicSetter.clear();
-    topicTime.clear();
-}
-
 const std::vector<int> &Channel::getClients() const
 {
     return clients;
