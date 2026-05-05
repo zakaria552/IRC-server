@@ -19,7 +19,7 @@ public:
     void broadcastJoinedUser(const Client &client, const std::string &channel);
     bool channelExist(const std::string &channel);
     bool isMemberOfChannel(const std::string &channel, int clientFd);
-    void updateChannelMode(const std::string &channel, Mode mode, char intent);
+    void updateChannelMode(const std::string &channel, Channel::Mode mode, char intent);
     uint8_t getChannelModes(const std::string &channel);
     Channel *getChannel(const std::string &channel);
     Channel *newChannel(const std::string &channel);

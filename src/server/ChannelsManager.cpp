@@ -84,7 +84,7 @@ bool ChannelsManager::isMemberOfChannel(const std::string &channel, int client)
     return false;
 }
 
-void ChannelsManager::updateChannelMode(const std::string &channel, Mode mode, char intent)
+void ChannelsManager::updateChannelMode(const std::string &channel, Channel::Mode mode, char intent)
 {
     if (intent == '-')
         channels[channel].unsetMode(mode);
