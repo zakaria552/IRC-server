@@ -85,14 +85,13 @@ static std::optional<IrcCommand> TryParseJoin(RawIrcCommand const& raw)
 {
     if (!raw.cmd.starts_with("JOIN"))
         return std::nullopt;
-    IrcCommand::JoinCmd join;
+    IrcCommand::JoinCmd join = {};
     std::vector<std::string> tokens = splitToTokens(raw.cmd, ' ');
-    try {
-        join.channels = splitToTokens(tokens.at(1), ',');
-        join.keys = splitToTokens(tokens.at(2), ',');
-    } catch (const std::out_of_range &err) {
-        Logger::error(err.what());
-    }
+    if (tokens.size() == 1)
+        return std::nullopt;
+    join.channels = splitToTokens(tokens[1], ',');
+    if (tokens.size() >= 3)
+        join.keys = splitToTokens(tokens[2], ',');
     return IrcCommand(join);
 }
 
