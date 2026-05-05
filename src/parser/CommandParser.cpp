@@ -22,7 +22,9 @@ static std::vector<std::string> splitToTokens(const std::string &str, const char
     size_t end = str.find(delimiter);
     while (end != std::string::npos)
     {
-       tokens.push_back(str.substr(start, end-start));
+        std::string chunk = str.substr(start, end-start);
+        if (!chunk.empty())
+            tokens.push_back(str.substr(start, end-start));
        start = end + 1;
        end = str.find(delimiter, start);
     }
