@@ -34,6 +34,7 @@ public:
     bool isMember(int clientId);
     void setTopic(const std::string &toic);
     void setKey(const std::string &key);
+    const std::string getKey() const ;
     void setMaxUserLimit(unsigned int max);
     bool isValidKey(const std::string &key);
     void invite(const std::string &);
