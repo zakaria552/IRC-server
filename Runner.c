@@ -14,6 +14,7 @@ int needs_relaunch = 0; // Set on update.
 pid_t app_pid = -1;  // Pid of ./ircserv
 time_t last_binary_mtime = 0; // Timestamp for tracking binary updates for relaunch.
 int app_read_fd = -1; // File descriptor for reading the server logs (stdout and stderr).
+char const* remote_branch;
 
 // Runs `git pull`.
 void Update(void);
@@ -42,13 +43,14 @@ void WebhookFlushMsgs(void);
 
 int main(int argc, char const** argv)
 {
-    if (argc < 2) // Need at least 2 arguments.
+    if (argc < 3) // Need at least 3 arguments.
     {
         fprintf(stderr, "Invalid amount of arguments.\r\n"
-            "Usage: %s <WEBHOOK_URL_SECRET>\r\n", argc == 1 ? argv[0] : "<program>");
+            "Usage: %s <WEBHOOK_URL_SECRET> <remote/branch>\r\n", argc == 1 ? argv[0] : "<program>");
         return 1;
     }
 
+    remote_branch = argv[2];
     if (not WebhookInit(argv[1]))
     {
         fprintf(stderr, "Fatal error: Failed to initialize Webhook.\r\n");
@@ -68,7 +70,7 @@ int main(int argc, char const** argv)
 
 void Update()
 {
-    // Run git pull
+    // Run git fetch origin
     pid_t pid = fork();
 
     if (pid == -1)
@@ -84,7 +86,7 @@ void Update()
         close(STDOUT_FILENO);
         open("/dev/null", O_WRONLY);
 
-        if (-1 == execvp("git", (char *const[]){"git", "pull", NULL}))
+        if (-1 == execvp("git", (char *const[]){"git", "fetch", "origin", NULL}))
         {
             fprintf(stderr, "Error: execvp() returned %s.\r\n", strerror(errno));
             _exit(1);
@@ -104,14 +106,63 @@ void Update()
         {
             if (WEXITSTATUS(exit_status) != 0)
             {
-                fprintf(stderr, "Error: `git pull` failed. Exit status %i.\r\n", WEXITSTATUS(exit_status));
+                fprintf(stderr, "Error: `git fetch origin` failed. Exit status %i.\r\n", WEXITSTATUS(exit_status));
                 sleep_delay_sec = 60;
                 return;
             }
         }
         else
         {
-            fprintf(stderr, "Abnormal process termination of `git pull`. Exit status: %i\r\n", WTERMSIG(exit_status));
+            fprintf(stderr, "Abnormal process termination of `git fetch origin`. Exit status: %i\r\n", WTERMSIG(exit_status));
+            sleep_delay_sec = 60;
+            return;
+        }
+    }
+
+    // Run git reset
+    pid = fork();
+
+    if (pid == -1)
+    {
+        fprintf(stderr, "Error: fork() returned %s.\r\n", strerror(errno));
+        sleep_delay_sec = 60;
+        return;
+    }
+
+    if (pid == 0)
+    {
+        // never thought of this one before
+        close(STDOUT_FILENO);
+        open("/dev/null", O_WRONLY);
+
+        if (-1 == execvp("git", (char *const[]){"git", "reset", "--hard", (char*)remote_branch, NULL}))
+        {
+            fprintf(stderr, "Error: execvp() returned %s.\r\n", strerror(errno));
+            _exit(1);
+        }
+    }
+    else
+    {
+        int exit_status;
+        if (-1 == waitpid(pid, &exit_status, 0))
+        {
+            fprintf(stderr, "Error: waitpid() returned %s.\r\n", strerror(errno));
+            sleep_delay_sec = 60;
+            return;
+        }
+
+        if (WIFEXITED(exit_status))
+        {
+            if (WEXITSTATUS(exit_status) != 0)
+            {
+                fprintf(stderr, "Error: `git reset` failed. Exit status %i.\r\n", WEXITSTATUS(exit_status));
+                sleep_delay_sec = 60;
+                return;
+            }
+        }
+        else
+        {
+            fprintf(stderr, "Abnormal process termination of `git reset`. Exit status: %i\r\n", WTERMSIG(exit_status));
             sleep_delay_sec = 60;
             return;
         }
