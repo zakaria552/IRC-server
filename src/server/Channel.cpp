@@ -28,6 +28,11 @@ void Channel::setKey(const std::string &key)
     this->key = key;
 }
 
+const std::string Channel::getKey() const
+{
+    return key;
+};
+
 void Channel::setMaxUserLimit(unsigned int max)
 {
     this->maxUsers = max;
