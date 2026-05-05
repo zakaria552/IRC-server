@@ -13,7 +13,7 @@ std::string NumericReplies::makeBody(int errCode, const std::string &nick, const
 
 Message NumericReplies::channelNotFound(const std::string &channel, const Client &client)
 {
-    return {client.getSocket(), NumericReplies::makeBody(402, client.getNick(), channel, "No such channel")};
+    return {client.getSocket(), NumericReplies::makeBody(403, client.getNick(), channel, "No such channel")};
 }
 
 Message NumericReplies::notChannelMember(const std::string &channel, const Client &client)
@@ -40,3 +40,18 @@ std::string NumericReplies::welcome()
 std::string NumericReplies::passMisMatch() {
     return "464 : Invalid password\r\n";
 };
+
+std::string NumericReplies::topicReply(const std::string &channel, const std::string &nick, const std::string &topic)
+{
+    return makeBody(332, nick, channel, topic);
+}
+
+std::string NumericReplies::noTopicReply(const std::string &channel, const std::string &nick)
+{
+    return makeBody(331, nick, channel, "No topic is set");
+}
+
+std::string NumericReplies::topicSetBy(const std::string &channel, const std::string &nick, const std::string &setter, const std::string &time)
+{
+    return ":" + serverName + " 333 " + nick + " #" + channel + " " + setter + " " + time + "\r\n";
+}

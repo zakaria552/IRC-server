@@ -1,6 +1,7 @@
 #ifndef _IRC_COMMAND_HPP_
 #define _IRC_COMMAND_HPP_
 
+#include <cstdint>
 #include <string>
 
 /*
@@ -27,6 +28,7 @@ struct IrcCommand
     IrcCommand(PingCmd);
     IrcCommand(InviteCmd);
     IrcCommand(ModeCmd);
+    IrcCommand(TopicCmd);
 
     IrcCommand(IrcCommand&&) noexcept;
 

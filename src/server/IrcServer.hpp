@@ -48,4 +48,5 @@ private:
     void HandlePassCmd(const IrcCommand::PassCmd &cmd);
     void HandleCapCmd(const IrcCommand::CapCmd &cmd);
     void HandlePingCmd(const IrcCommand::PingCmd &cmd);
+    void HandleTopicCmd(const IrcCommand::TopicCmd &cmd);
 };

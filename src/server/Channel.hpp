@@ -1,5 +1,6 @@
 #pragma once
 #include "server/Client.hpp"
+#include <cstdint>
 #include <string>
 #include <vector>
 #include "server/QueueMessages.hpp"
@@ -18,11 +19,13 @@ class Channel
 {
     std::string name;
     std::string topic;
+    std::string topicSetter;
+    std::string topicTime;
     std::vector<int> clients;
     std::vector<int> blackList;
     std::vector<std::string> inviteList;
     uint8_t modes = INVITE_ONLY; // unspecified for now
-    unsigned int maxUsers;
+    [[maybe_unused]] unsigned int maxUsers;
 public:
     Channel() = default;
     Channel(const std::string &name);
@@ -39,4 +42,10 @@ public:
     void setMode(Mode mode);
     void unsetMode(Mode mode);
     const std::string &getName() const;
+    const std::string &getTopic() const;
+    void setTopic(const std::string &topic, const std::string &setter = "");
+    const std::string &getTopicSetter() const;
+    const std::string &getTopicTime() const;
+    bool hasTopic() const;
+    const std::vector<int> &getClients() const;
 };
