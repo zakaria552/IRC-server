@@ -283,56 +283,100 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
     if (!channels.isMemberOfChannel(channelName, cmd.client))
         return queueMessages.push(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
     Channel *channel = channels.getChannel(channelName);
-    if (cmd.mode == NONE)
+    if (cmd.listOfModes.empty())
         return queueMessages.push(NumericReplies::listModes(channelName, channel->listModes(), clients[cmd.client]));
     if (!channel->isOperator(cmd.client))
         return queueMessages.push(NumericReplies::isNotOperator(channelName, clients[cmd.client]));
-    switch (cmd.mode) {
-        case INVITE_ONLY:
+    std::string strModes = "MODE " + cmd.target + " ";
+    std::string params;
+    bool shouldBroadcastModeChange = false;
+    for(size_t i = 0, j = 0; i < cmd.listOfModes.size(); i++)
+    {
+        char intent = cmd.listOfModes[i].intent;
+        std::string strMode;
+        for(size_t k = 0; k < cmd.listOfModes[i].modes.size(); k++)
         {
-            channels.updateChannelMode(channelName, INVITE_ONLY, cmd.intent);
-            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
-            break;
+            Mode mode = static_cast<Mode>(cmd.listOfModes[i].modes[k]);
+            switch (mode) {
+                case INVITE_ONLY:
+                {
+                    channels.updateChannelMode(channelName, mode, intent);
+                    strMode += 'i';
+                    break;
+                }
+                case REQUIRE_PASS:
+                {
+                    if (intent == '+' && cmd.params.size() < (j + 1))
+                        continue; // [TODO] handle invalid mode params
+                    if (intent == '+')
+                        channel->setKey(cmd.params[j++]);
+                    channels.updateChannelMode(channelName, mode, intent);
+                    params += " " + channel->getKey();
+                    strMode += 'k';
+                    break;
+                }
+                case USER_LIMIT:
+                {
+                    if (intent == '+' && cmd.params.size() < (j + 1))
+                        continue; // [TODO] handle invalid mode params
+                    if (intent == '+')
+                    {
+                        int maxUser;
+                        try {
+                            maxUser = std::stoi(cmd.params[j++]);
+                            if (maxUser < 0)
+                            {
+                                queueMessages.push(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + std::to_string(maxUser), "Can't be negative"));
+                                continue;
+                            }
+                        } catch (...) {
+                            continue;
+                        }
+                        channel->setMaxUserLimit(maxUser);
+                        params += " " + cmd.params[j - 1];
+                    }
+                    channels.updateChannelMode(channelName, mode, intent);
+                    strMode += 'l';
+                    break;
+                }
+                case RESTRICT_TOPIC:
+                {
+                    channels.updateChannelMode(channelName, mode, intent);
+                    strMode += 't';
+                    break;
+                }
+                case OP_PRIVILEGE:
+                {
+                    if (cmd.params.size() < (j + 1))
+                        continue;// [TODO] handle invalid mode params
+                    Client *target = getClientByNick(cmd.params[j++]);
+                    if (!target)
+                    {
+                        queueMessages.push(NumericReplies::noSuchUser(clients[cmd.client], cmd.params[j - 1]));
+                        continue;
+                    }
+                    if (!channels.isMemberOfChannel(channelName, target->getSocket()))
+                    {
+                        queueMessages.push(NumericReplies::userNotInChannel(channelName, clients[cmd.client], *target));
+                        continue;
+                    }
+                    channel->updateOperators(target->getSocket(), intent == '+');
+                    strMode += 'o';
+                    params += " " + cmd.params[j - 1];
+                    break;
+                }
+                default:
+                    break;
+            }
         }
-        case REQUIRE_PASS:
+        if (!strMode.empty())
         {
-            if (cmd.intent == '+' && cmd.key.empty())
-                return; // [TODO] handle invalid mode params
-            channels.updateChannelMode(channelName, REQUIRE_PASS, cmd.intent);
-            channel->setKey(cmd.key);
-            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
-            break;
+            strModes += intent + strMode;
+            shouldBroadcastModeChange = true;
         }
-        case USER_LIMIT:
-        {
-            if (cmd.maxUser < 0)
-                return queueMessages.push(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + std::to_string(cmd.maxUser), "Can't be negative"));
-            channels.updateChannelMode(channelName, USER_LIMIT, cmd.intent);
-            if (cmd.intent == '+')
-                channel->setMaxUserLimit(cmd.maxUser);
-            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
-            break;
-        }
-        case RESTRICT_TOPIC:
-        {
-            channels.updateChannelMode(channelName, RESTRICT_TOPIC, cmd.intent);
-            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
-            break;
-        }
-        case OP_PRIVILEGE:
-        {
-            Client *target = getClientByNick(cmd.nick);
-            if (!target)
-               return queueMessages.push(NumericReplies::noSuchUser(clients[cmd.client], cmd.nick));
-            if (!channels.isMemberOfChannel(channelName, target->getSocket()))
-                return queueMessages.push(NumericReplies::userNotInChannel(channelName, clients[cmd.client], *target));
-            channel->updateOperators(target->getSocket(), cmd.intent == '+');
-            channels.broadcastModeChange(clients[cmd.client], channelName, cmd.raw);
-            break;
-        }
-        default:
-            break;
     }
+    if (shouldBroadcastModeChange)
+        channels.broadcastModeChange(clients[cmd.client], channelName, strModes + params);
 }
 
 void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
