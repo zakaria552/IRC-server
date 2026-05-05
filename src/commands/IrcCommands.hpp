@@ -1,7 +1,6 @@
 #ifndef _IRC_COMMANDS_HPP_
 #define _IRC_COMMANDS_HPP_
 
-#include <string>
 enum Type
 {
     UNDEFINED,
@@ -78,7 +77,7 @@ struct ModeCmd : public BaseCmd
 {
     struct Mode
     {
-        std::vector<std::uint8_t> modes;
+        std::vector<Channel::Mode> modes;
         char intent;
     };
     std::string target;
