@@ -6,18 +6,21 @@
 #include <vector>
 #include "server/QueueMessages.hpp"
 
-enum Mode: uint8_t
-{
-   NONE = 0,
-   INVITE_ONLY = 1 << 0,
-   RESTRICT_TOPIC = 1 << 1,
-   REQUIRE_PASS = 1 << 2,
-   OP_PRIVILEGE = 1 << 3,
-   USER_LIMIT  = 1 << 4,
-};
+
 
 class Channel
 {
+public:
+    enum Mode: uint8_t
+    {
+       NONE = 0,
+       INVITE_ONLY = 1 << 0,
+       RESTRICT_TOPIC = 1 << 1,
+       REQUIRE_PASS = 1 << 2,
+       OP_PRIVILEGE = 1 << 3,
+       USER_LIMIT  = 1 << 4,
+    };
+private:
     std::string name = {};
     std::string topic = {};
     std::string topicSetter;
