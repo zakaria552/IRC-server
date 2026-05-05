@@ -142,67 +142,48 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
 {
     if (!raw.cmd.starts_with("MODE"))
         return std::nullopt;
-    IrcCommand::ModeCmd cmd; // MODE #67 -i
+    IrcCommand::ModeCmd cmd{};
     std::vector<std::string> tokens = splitToTokens(raw.cmd, ' ');
-    std::vector<std::string> modeArgs;
-    std::string mode{};
-    cmd.raw = raw.cmd;
-    try {
-        cmd.target = tokens.at(1);
-        mode = tokens.at(2);
-    } catch (...) {
-        cmd.mode = NONE;
-        cmd.raw = raw.cmd;
+    if (tokens.size() == 1)
+        return std::nullopt;
+    cmd.target = tokens[1];
+    if (tokens.size() == 2)
         return cmd;
-    }
-    try {
-        modeArgs.assign(tokens.begin() + 3, tokens.end()) ;
-    } catch(...) {
-    }
-    switch (mode[1]) {
-        case 'i':
-            cmd.mode = INVITE_ONLY;
-            cmd.intent = mode[0];
-            break;
-        case 'k':
-            cmd.mode = REQUIRE_PASS;
-            cmd.intent = mode[0];
-            if (modeArgs.size() > 0)
-                cmd.key = modeArgs[0];
-            break;
-        case 't':
-            cmd.mode = RESTRICT_TOPIC;
-            cmd.intent = mode[0];
-            break;
-        case 'l':
+    if (tokens[2][0] != '-' && tokens[2][0] != '+')
+        return std::nullopt;
+    cmd.params = std::vector<std::string>(tokens.begin() + 3, tokens.end());
+    IrcCommand::ModeCmd::Mode mode = {{}, tokens[2][0]};
+    for(size_t i = 1; i < tokens[2].size(); i++)
+    {
+        if (tokens[2][i] == '-' || tokens[2][i] == '+')
         {
-            cmd.mode = USER_LIMIT;
-            cmd.intent = mode[0];
-            if (cmd.intent != '+')
-            {
-                cmd.raw = tokens[0] + " " + cmd.target + " -l";
-                break;
-            }
-            try {
-                cmd.maxUser = std::stoi(modeArgs.at(0));
-            } catch (...) {
-                return std::nullopt;
-            }
-            break;
+            cmd.listOfModes.push_back(mode);
+            mode.intent = tokens[2][i];
+            mode.modes.clear();
+            continue;
         }
-        case 'o':
-            cmd.mode = OP_PRIVILEGE;
-            cmd.intent = mode[0];
-            try {
-                cmd.nick = modeArgs.at(0);
-            } catch (...) {
-                return std::nullopt;
-            }
-            break;
-        default:
-            Logger::warning("Mode [" + mode + "] is not supported");
-            break;
+        switch (tokens[2][i]) {
+            case 'i':
+                mode.modes.push_back(INVITE_ONLY);
+                break;
+            case 'k':
+                mode.modes.push_back(REQUIRE_PASS);
+                break;
+            case 't':
+                mode.modes.push_back(RESTRICT_TOPIC);
+                break;
+            case 'l':
+                mode.modes.push_back(USER_LIMIT);
+                break;
+            case 'o':
+                mode.modes.push_back(OP_PRIVILEGE);
+                break;
+            default:
+                Logger::warning("Mode [" + std::to_string(tokens[2][i]) + "] is not supported");
+                continue;
+        }
     }
+    cmd.listOfModes.push_back(mode);
     return IrcCommand(cmd);
 }
 

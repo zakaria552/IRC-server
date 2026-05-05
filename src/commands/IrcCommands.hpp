@@ -76,13 +76,14 @@ struct TopicCmd : public BaseCmd
 
 struct ModeCmd : public BaseCmd
 {
+    struct Mode
+    {
+        std::vector<std::uint8_t> modes;
+        char intent;
+    };
     std::string target;
-    std::string key;
-    std::string nick;
-    uint8_t mode;
-    char intent;
-    std::string raw;
-    int maxUser;
+    std::vector<Mode> listOfModes;
+    std::vector<std::string> params;
 };
 
 union CmdPayload
