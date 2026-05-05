@@ -10,10 +10,12 @@
 #include "server/QueueMessages.hpp"
 #include "utils/Logger.hpp"
 #include <cerrno>
+#include <charconv>
 #include <optional>
 #include <stdexcept>
 #include <cstring>
 #include <string>
+#include <system_error>
 #include "server/globals.hpp"
 
 IrcServer::IrcServer(const std::string &name, const char *port, const char *password)
@@ -322,18 +324,15 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
                     if (intent == '+')
                     {
                         int maxUser;
-                        try {
-                            maxUser = std::stoi(cmd.params[j++]);
-                            if (maxUser < 0)
-                            {
-                                queueMessages.push(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + std::to_string(maxUser), "Can't be negative"));
-                                continue;
-                            }
-                        } catch (...) {
+                        const char *param = cmd.params[j].c_str();
+                        std::from_chars_result res = std::from_chars(param, param + cmd.params[j++].size(), maxUser);
+                        if (res.ec == std::errc::invalid_argument || res.ec == std::errc::result_out_of_range || maxUser < 0)
+                        {
+                            queueMessages.push(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + cmd.params[j-1], "Invalid argument"));
                             continue;
                         }
                         channel->setMaxUserLimit(maxUser);
-                        params += " " + cmd.params[j - 1];
+                        params += " " + std::to_string(maxUser);
                     }
                     channels.updateChannelMode(channelName, mode, intent);
                     strMode += 'l';
