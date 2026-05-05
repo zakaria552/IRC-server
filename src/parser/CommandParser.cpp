@@ -166,19 +166,19 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
         }
         switch (tokens[2][i]) {
             case 'i':
-                mode.modes.push_back(INVITE_ONLY);
+                mode.modes.push_back(Channel::Mode::INVITE_ONLY);
                 break;
             case 'k':
-                mode.modes.push_back(REQUIRE_PASS);
+                mode.modes.push_back(Channel::Mode::REQUIRE_PASS);
                 break;
             case 't':
-                mode.modes.push_back(RESTRICT_TOPIC);
+                mode.modes.push_back(Channel::Mode::RESTRICT_TOPIC);
                 break;
             case 'l':
-                mode.modes.push_back(USER_LIMIT);
+                mode.modes.push_back(Channel::Mode::USER_LIMIT);
                 break;
             case 'o':
-                mode.modes.push_back(OP_PRIVILEGE);
+                mode.modes.push_back(Channel::Mode::OP_PRIVILEGE);
                 break;
             default:
                 Logger::warning("Mode [" + std::to_string(tokens[2][i]) + "] is not supported");
