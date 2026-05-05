@@ -26,7 +26,8 @@ static std::vector<std::string> splitToTokens(const std::string &str, const char
        start = end + 1;
        end = str.find(delimiter, start);
     }
-    tokens.push_back(str.substr(start));
+    if (start < (str.size() - 1))
+        tokens.push_back(str.substr(start));
     return tokens;
 }
 
