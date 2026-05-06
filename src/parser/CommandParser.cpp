@@ -5,6 +5,8 @@
 #include "utils/Logger.hpp"
 #include <iostream>
 #include <optional>
+#include <stdexcept>
+#include <vector>
 
 CommandParser::CommandParser()
 {
@@ -12,6 +14,23 @@ CommandParser::CommandParser()
 
 CommandParser::~CommandParser()
 {
+}
+static std::vector<std::string> splitToTokens(const std::string &str, const char delimiter)
+{
+    std::vector<std::string> tokens;
+    size_t start = 0;
+    size_t end = str.find(delimiter);
+    while (end != std::string::npos)
+    {
+        std::string chunk = str.substr(start, end-start);
+        if (!chunk.empty())
+            tokens.push_back(str.substr(start, end-start));
+       start = end + 1;
+       end = str.find(delimiter, start);
+    }
+    if (start < (str.size() - 1))
+        tokens.push_back(str.substr(start));
+    return tokens;
 }
 
 static
@@ -67,13 +86,16 @@ static std::optional<IrcCommand> TryParsePass(RawIrcCommand const& raw)
 }
 static std::optional<IrcCommand> TryParseJoin(RawIrcCommand const& raw)
 {
-    if (raw.cmd.starts_with("JOIN"))
-    {
-        IrcCommand::JoinCmd join;
-        join.channels = raw.cmd.substr(5);
-        return IrcCommand(join);
-    }
-    return std::nullopt;
+    if (!raw.cmd.starts_with("JOIN"))
+        return std::nullopt;
+    IrcCommand::JoinCmd join = {};
+    std::vector<std::string> tokens = splitToTokens(raw.cmd, ' ');
+    if (tokens.size() == 1)
+        return std::nullopt;
+    join.channels = splitToTokens(tokens[1], ',');
+    if (tokens.size() >= 3)
+        join.keys = splitToTokens(tokens[2], ',');
+    return IrcCommand(join);
 }
 
 static std::optional<IrcCommand> TryParsePrivMsg(RawIrcCommand const& raw)
@@ -122,24 +144,48 @@ static std::optional<IrcCommand> TryParseMode(RawIrcCommand const& raw)
 {
     if (!raw.cmd.starts_with("MODE"))
         return std::nullopt;
-    IrcCommand::ModeCmd cmd; // MODE #67 -i
-    int start = raw.cmd.find(' ', 5);
-    if (start < 0)
+    IrcCommand::ModeCmd cmd{};
+    std::vector<std::string> tokens = splitToTokens(raw.cmd, ' ');
+    if (tokens.size() == 1)
         return std::nullopt;
-    std::string mode = raw.cmd.substr(start + 1);
-    cmd.channel = raw.cmd.substr(5, raw.cmd.find(' ') - 1);
-    if (mode.size() < 2)
+    cmd.target = tokens[1];
+    if (tokens.size() == 2)
+        return cmd;
+    if (tokens[2][0] != '-' && tokens[2][0] != '+')
         return std::nullopt;
-    Logger::info("Channel-["+cmd.channel+"]");
-    switch (mode[1]) {
-        case 'i':
-            cmd.mode = INVITE_ONLY;
-            cmd.intent = mode[0];
-            break;
-        default:
-            Logger::warning("Mode [" + mode + "] is not supported");
-            break;
+    cmd.params = std::vector<std::string>(tokens.begin() + 3, tokens.end());
+    IrcCommand::ModeCmd::Mode mode = {{}, tokens[2][0]};
+    for(size_t i = 1; i < tokens[2].size(); i++)
+    {
+        if (tokens[2][i] == '-' || tokens[2][i] == '+')
+        {
+            cmd.listOfModes.push_back(mode);
+            mode.intent = tokens[2][i];
+            mode.modes.clear();
+            continue;
+        }
+        switch (tokens[2][i]) {
+            case 'i':
+                mode.modes.push_back(Channel::Mode::INVITE_ONLY);
+                break;
+            case 'k':
+                mode.modes.push_back(Channel::Mode::REQUIRE_PASS);
+                break;
+            case 't':
+                mode.modes.push_back(Channel::Mode::RESTRICT_TOPIC);
+                break;
+            case 'l':
+                mode.modes.push_back(Channel::Mode::USER_LIMIT);
+                break;
+            case 'o':
+                mode.modes.push_back(Channel::Mode::OP_PRIVILEGE);
+                break;
+            default:
+                Logger::warning("Mode [" + std::to_string(tokens[2][i]) + "] is not supported");
+                continue;
+        }
     }
+    cmd.listOfModes.push_back(mode);
     return IrcCommand(cmd);
 }
 

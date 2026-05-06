@@ -1,5 +1,6 @@
 #include "Channel.hpp"
 #include "server/Client.hpp"
+#include "server/QueueMessages.hpp"
 #include "utils/Logger.hpp"
 #include <algorithm>
 #include <string>
@@ -17,8 +18,34 @@ bool Channel::isMember(int clientId)
     return std::find(clients.begin(), clients.end(), clientId) != clients.end();
 }
 
+void Channel::setTopic(const std::string &topic)
+{
+    this->topic = topic;
+}
+
+void Channel::setKey(const std::string &key)
+{
+    this->key = key;
+}
+
+const std::string Channel::getKey() const
+{
+    return key;
+};
+
+void Channel::setMaxUserLimit(unsigned int max)
+{
+    this->maxUsers = max;
+}
+
+bool Channel::isValidKey(const std::string &key)
+{
+   return this->key == key;
+}
+
 void Channel::addClient(int clientId)
 {
+    operators[clientId] = (clients.size() == 0);
     clients.push_back(clientId);
 }
 
@@ -37,10 +64,10 @@ BroadcastMessage Channel::constructMessage(const Client &sender, const std::stri
     }
     return msgQueue;
 }
-
-bool Channel::modeIsSet(Mode mode)
+//      0101 & 1
+bool Channel::modeIsSet(Mode mode) const
 {
-    return (modes >> mode) & 1;
+    return modes & mode;
 }
 void Channel::setMode(Mode mode)
 {
@@ -117,4 +144,41 @@ bool Channel::hasTopic() const
 const std::vector<int> &Channel::getClients() const
 {
     return clients;
+}
+
+void Channel::updateOperators(int clientFd, bool isOperator)
+{
+    operators[clientFd] = isOperator;
+}
+
+bool Channel::isOperator(int clientFd)
+{
+    return operators[clientFd];
+}
+
+std::string Channel::listModes() const
+{
+    std::string modes = "+";
+    std::string modeArgs = "";
+    if (modeIsSet(INVITE_ONLY))
+        modes += "i";
+    if (modeIsSet(RESTRICT_TOPIC))
+        modes += "t";
+    if (modeIsSet(REQUIRE_PASS))
+    {
+        modes += "k";
+        modeArgs += " " + key;
+    }
+    if (modeIsSet(USER_LIMIT))
+    {
+        modes += "l";
+        modeArgs += " " + std::to_string(maxUsers);
+    }
+    return modes + modeArgs;
+}
+
+
+bool Channel::isFull()
+{
+    return modeIsSet(USER_LIMIT) && clients.size() >= maxUsers;
 }

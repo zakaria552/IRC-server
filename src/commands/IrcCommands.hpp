@@ -45,8 +45,8 @@ struct PassCmd : public BaseCmd
 
 struct JoinCmd : public BaseCmd
 {
-    // UNDONE
-    std::string channels;
+    std::vector<std::string> channels;
+    std::vector<std::string> keys;
 };
 
 struct PrivMsgCmd : public BaseCmd
@@ -75,10 +75,14 @@ struct TopicCmd : public BaseCmd
 
 struct ModeCmd : public BaseCmd
 {
-    std::string channel;
+    struct Mode
+    {
+        std::vector<Channel::Mode> modes;
+        char intent;
+    };
     std::string target;
-    uint8_t mode;
-    char intent;
+    std::vector<Mode> listOfModes;
+    std::vector<std::string> params;
 };
 
 union CmdPayload
