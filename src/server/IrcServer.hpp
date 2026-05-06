@@ -4,6 +4,7 @@
 #include <string>
 #include <sys/poll.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include "IOEventPoller.hpp"
 #include "parser/RawCommandParser.hpp"
 #include <unistd.h>

@@ -36,7 +36,6 @@ void ChannelsManager::add(const std::string &channel, int clientId)
         room = &channels[channel];
     }
     room->addClient(clientId);
-    Logger::info("Client "+ std::to_string(clientId) + " joined the channel: " + channel);
 }
 
 
@@ -45,11 +44,10 @@ void ChannelsManager::sendMessage(const Client &sender, const std::string &targe
     std::string room = targets.substr(1);
     if (channels.find(room) == channels.end())
     {
-        Logger::info("Channel not found: [" + room + "]");
+        Logger::debug("Channel not found: [" + room + "]");
         return;
     }
     queue.push(channels[room].constructMessage(sender, msg));
-    Logger::info("Sent message");
 }
 
 

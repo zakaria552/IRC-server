@@ -6,7 +6,7 @@
 
 void IOEventPoller::pollEvents()
 {
-    Logger::info("Polling events");
+    Logger::debug("Polling events");
     while (!newPolls.empty())
     {
         polls.push_back(newPolls.top());

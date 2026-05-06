@@ -60,7 +60,7 @@ BroadcastMessage Channel::constructMessage(const Client &sender, const std::stri
         if (client == sender.getSocket())
             continue;
         msgQueue.clientFds.push_back(client);
-        Logger::info("Sent message to client: " + std::to_string(client) + " , " + body);
+        Logger::debug("Sent message to client: " + std::to_string(client) + " , " + body);
     }
     return msgQueue;
 }

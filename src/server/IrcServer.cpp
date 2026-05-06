@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <cstring>
 #include <string>
+#include <sys/socket.h>
 #include <system_error>
 #include "server/globals.hpp"
 
@@ -24,6 +25,7 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
     struct addrinfo req{}, *res, *p;
     req.ai_family = AF_INET;
     req.ai_flags = AI_PASSIVE;
+    Logger::info("Initializing server...");
     if (getaddrinfo(nullptr, port, &req, &res) != 0)
         throw std::runtime_error("Failed to retrieve host address information");
     for (p = res; p != nullptr; p = p->ai_next)
@@ -32,7 +34,7 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
             continue;
         if ((socketFd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) != -1)
         {
-            Logger::info("AF: "+ std::to_string(p->ai_family) +
+            Logger::debug("AF: "+ std::to_string(p->ai_family) +
                         ", sockType: " + std::to_string(p->ai_socktype) +
                         ", AF_PROTOCAL: " + std::to_string(p->ai_protocol));
             break;
@@ -61,6 +63,7 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
 
 void IrcServer::start()
 {
+    Logger::info("Starting sever");
     if (listen(socketFd, DEFAULT_BACKLOG) != 0)
         throw std::runtime_error("Failed to listen for connections on the socket" + std::string(strerror(errno)));
     while (!closeConnection)
@@ -90,25 +93,32 @@ void IrcServer::start()
 
 void IrcServer::newClient()
 {
-    Logger::info("new connection");
-    sockaddr_storage clientAddr;
+    sockaddr clientAddr;
     pollfd newPoll = {};
-    socklen_t addrLen = sizeof(sockaddr_storage);
+    socklen_t addrLen = sizeof(clientAddr);
+    char ipstr[INET_ADDRSTRLEN];
     int clientFd;
-    if ((clientFd = accept(socketFd, (struct sockaddr *)&clientAddr, &addrLen)) < 0)
+    if ((clientFd = accept(socketFd, &clientAddr, &addrLen)) < 0)
     {
-        Logger::warning("Failed to accept client");
+        Logger::warning("Failed to accept client: " + std::string(std::strerror(errno)));
         return;
     }
-    clients[clientFd] = Client(clientFd);
+    if (inet_ntop(clientAddr.sa_family, &clientAddr, ipstr, sizeof(ipstr)) == NULL)
+    {
+        Logger::warning("Failed retrieve client's IP address: " + std::string(std::strerror(errno)));
+        close(clientFd);
+        return;
+    }
+    clients[clientFd] = Client(clientFd, ipstr);
     newPoll.fd = clientFd;
     newPoll.events = POLLIN;
     ioEvents.add(newPoll);
+    Logger::info("New client from: " + clients[clientFd].getIpAddress());
 }
 
 void IrcServer::processRequest(int clientFd, const char *body, const size_t length)
 {
-    Logger::info("Processing client request");
+    Logger::debug("Processing client request");
     RawIrcCommands msgs = parser.parse(clientFd, body, length);
     std::queue<IrcCommand> cmds = translateRawCommands(msgs, clientFd);
     if (cmds.empty())
@@ -117,10 +127,10 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
     {
         switch (cmds.front().type) {
             case IrcCommand::UNDEFINED:
-                Logger::warning("Undefined cmd");
+                Logger::debug("Undefined cmd");
                 break;
             case IrcCommand::CAP:
-                Logger::warning("Ignoring capability handshake");
+                Logger::debug("Ignoring capability handshake");
                 break;
             case IrcCommand::NICK:
                 HandleNickCmd(cmds.front().payload.nick);
@@ -162,7 +172,7 @@ void IrcServer::clientDisconnected(int clientFd)
     // .erase() was sometimes returning 0 instead of expected 1 element removed.
     if (clients.erase(clientFd) == 0) [[unlikely]]
     {
-        Logger::info("UNEXPECTED FAIL TO ERASE CLIENT!");
+        Logger::error("UNEXPECTED FAIL TO ERASE CLIENT!");
         std::exit(1);
     }
 
@@ -181,7 +191,7 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws, int
         std::optional<IrcCommand> cmd = p.Parse(raw, clientFd);
         if (not cmd.has_value())
         {
-            Logger::info("Dropped raw cmd: " + raw.cmd);
+            Logger::debug("Dropped raw cmd: " + raw.cmd);
         }
         else
         {
@@ -249,7 +259,7 @@ void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
             return;
         }
     }
-    Logger::info("Not found user to send the message");
+    Logger::debug("Not found user to send the message");
 }
 
 void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
@@ -435,6 +445,7 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
         channel->addClient(cmd.client);
         channels.broadcastJoinedUser(client, channelName);
         sendListOfUsers(client, channel);
+        Logger::info("Client: " + client.info() + " has joined " + channelName);
     }
 }
 
@@ -444,7 +455,7 @@ void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
     clients[cmd.client].setNick(nick);
     if (!authenticate(clients[cmd.client]))
     {
-        Logger::info("Failed to authenticate client, booting them off from server");
+        Logger::debug("Failed to authenticate client, booting them off from server");
         std::string body = NumericReplies::passMisMatch();
         queueMessages.push({cmd.client, body});
         clientDisconnected(cmd.client);
@@ -462,7 +473,7 @@ void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
 {
    (void) cmd;
-   Logger::warning("Ignoring capability handshake");
+   Logger::debug("Ignoring capability handshake");
 }
 
 void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
@@ -501,7 +512,7 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
         return;
     }
     // If +t mode is set, only ops can change the topic
-    if (channel->modeIsSet(Channel::Mode::RESTRICT_TOPIC) && !clients[cmd.client].isOperator())
+    if (channel->modeIsSet(Channel::Mode::RESTRICT_TOPIC) && !channel->isOperator(cmd.client))
     {
         queueMessages.push({cmd.client, NumericReplies::makeBody(482, clients[cmd.client].getNick(), channelName, "You're not channel operator")});
         return;

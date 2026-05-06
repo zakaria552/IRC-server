@@ -3,9 +3,7 @@
 #include "commands/RawIrcCommand.hpp"
 #include "server/Channel.hpp"
 #include "utils/Logger.hpp"
-#include <iostream>
 #include <optional>
-#include <stdexcept>
 #include <vector>
 
 CommandParser::CommandParser()
@@ -51,7 +49,6 @@ static std::optional<IrcCommand> TryParseNick(RawIrcCommand const& raw)
 {
     if (raw.cmd.starts_with("NICK"))
     {
-        Logger::info("translating NICK");
         IrcCommand::NickCmd nick;
         nick.nickname = raw.cmd.substr(5);
         nick.client = raw.client;
@@ -114,7 +111,6 @@ static std::optional<IrcCommand> TryParsePrivMsg(RawIrcCommand const& raw)
 
 static std::optional<IrcCommand> TryParsePing(RawIrcCommand const& raw)
 {
-    Logger::info(raw.cmd);
     if (raw.cmd.starts_with("PING"))
     {
         IrcCommand::PingCmd cmd;
@@ -212,12 +208,11 @@ static std::optional<IrcCommand> TryParseTopic(RawIrcCommand const& raw)
 
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int clientFd)
 {
-    Logger::info(raw.cmd);
+    Logger::debug(raw.cmd);
     {
         std::optional<IrcCommand> cmd = TryParseCap(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a CAP irc command.\r\n";
             cmd.value().payload.cap.client = clientFd;
             return cmd;
         }
@@ -226,7 +221,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParseUser(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a User command.\r\n";
             cmd.value().payload.user.client = clientFd;
             return cmd;
         }
@@ -235,7 +229,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParseNick(raw);
         if (cmd.has_value())
         {
-            Logger::info("Successfully parsed a NICK irc command.\r\n");
             cmd.value().payload.nick.client = clientFd;
             return cmd;
         }
@@ -244,7 +237,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParsePass(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a PASS irc command.\r\n";
             cmd.value().payload.pass.client = clientFd;
             return cmd;
         }
@@ -253,7 +245,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParseJoin(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a JOIN irc command.\r\n";
             cmd.value().payload.join.client = clientFd;
             return cmd;
         }
@@ -262,7 +253,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParsePrivMsg(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a PRIVMSG command.\r\n";
             cmd.value().payload.privmsg.client = clientFd;
             return cmd;
         }
@@ -271,7 +261,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParsePing(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a PING command.\r\n";
             cmd.value().payload.ping.client = clientFd;
             return cmd;
         }
@@ -280,7 +269,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParseInvite(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a INVITE command.\r\n";
             cmd.value().payload.invite.client = clientFd;
             return cmd;
         }
@@ -289,7 +277,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParseMode(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a Mode command.\r\n";
             cmd.value().payload.mode.client = clientFd;
             return cmd;
         }
@@ -298,7 +285,6 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         std::optional<IrcCommand> cmd = TryParseTopic(raw);
         if (cmd.has_value())
         {
-            std::cerr << "Successfully parsed a TOPIC command.\r\n";
             cmd.value().payload.topic.client = clientFd;
             return cmd;
         }
