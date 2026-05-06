@@ -39,7 +39,7 @@ private:
     void processRequest(int clientFd, const char *body, const size_t length);
     std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws, int clientFd);
     void flushMsgQueues();
-    bool authenticate(const Client &client);
+    void authenticate(Client &client);
     void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd);
     void HandleUserCmd(const IrcCommand::UserCmd &cmd);
     void HandleInviteCmd(const IrcCommand::InviteCmd &cmd);

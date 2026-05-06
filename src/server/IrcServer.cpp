@@ -130,7 +130,7 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
                 Logger::debug("Undefined cmd");
                 break;
             case IrcCommand::CAP:
-                Logger::debug("Ignoring capability handshake");
+                HandleCapCmd(cmds.front().payload.cap);
                 break;
             case IrcCommand::NICK:
                 HandleNickCmd(cmds.front().payload.nick);
@@ -204,9 +204,19 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws, int
     return cmds;
 }
 
-bool IrcServer::authenticate(const Client &client)
+void IrcServer::authenticate(Client &client)
 {
-    return client.getPass() == password;
+    if (!password.empty() && (client.getPass() != password))
+    {
+        Logger::debug("Failed to authenticate client, booting them off from server");
+        std::string body = NumericReplies::passMisMatch();
+        queueMessages.push({client.getSocket(), body});
+        clientDisconnected(client.getSocket());
+        return;
+    }
+    std::string body = NumericReplies::welcome() + client.getNick() + " :Welcome to the Internet Relay Network " + client.getNick() + "\r\n";
+    queueMessages.push({client.getSocket(), body});
+    client.updateHandshakeState(Client::Handshake::AUTHENTICATED);
 }
 
 void IrcServer::flushMsgQueues()
@@ -234,6 +244,9 @@ void IrcServer::flushMsgQueues()
 // Handlers
 void IrcServer::HandlePingCmd(const IrcCommand::PingCmd &cmd)
 {
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
     std::string src = ":";
     std::string body = src + serverName + " " + cmd.token + "\r\n";
     queueMessages.push({cmd.client, body});
@@ -241,6 +254,9 @@ void IrcServer::HandlePingCmd(const IrcCommand::PingCmd &cmd)
 
 void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
 {
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
     if (cmd.targets[0] == '#')
     {
         Channel *channel = channels.getChannel(cmd.targets.substr(1));
@@ -264,6 +280,9 @@ void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
 
 void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
 {
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
     Channel *channel = channels.getChannel(cmd.channel);
     if (!channel)
     {
@@ -296,6 +315,9 @@ void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
 
 void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
 {
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
     if (cmd.target[0] != '#')
         return;
     const std::string channelName = cmd.target.substr(1);
@@ -417,6 +439,8 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
 void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
 {
     Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
     for(size_t i = 0; i < cmd.channels.size(); i++)
     {
         std::string channelName = cmd.channels[i].substr(1);
@@ -452,38 +476,49 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
 void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
 {
     std::string nick = cmd.nickname;
-    clients[cmd.client].setNick(nick);
-    if (!authenticate(clients[cmd.client]))
+    Client &client = clients[cmd.client];
+    client.setNick(nick);
+    client.updateHandshakeState(Client::Handshake::RECEIVED_NICK);
+    if (!client.isAuthenticated() && client.readyToAuthenticate())
     {
-        Logger::debug("Failed to authenticate client, booting them off from server");
-        std::string body = NumericReplies::passMisMatch();
-        queueMessages.push({cmd.client, body});
-        clientDisconnected(cmd.client);
-        return;
+        authenticate(client);
     }
-    std::string body = NumericReplies::welcome() + clients[cmd.client].getNick() + " :Welcome to the Internet Relay Network " + clients[cmd.client].getNick() + "\r\n";
-    queueMessages.push({cmd.client, body});
 }
 
 void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 {
-    clients[cmd.client].setPass(cmd.password);
+    Client &client = clients[cmd.client];
+    client.setPass(cmd.password);
+    client.updateHandshakeState(Client::Handshake::RECEIVED_PASS);
+    if (!client.isAuthenticated() && client.readyToAuthenticate())
+    {
+        authenticate(client);
+    }
 }
 
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
 {
-   (void) cmd;
    Logger::debug("Ignoring capability handshake");
+   clients[cmd.client].updateHandshakeState(Client::Handshake::RECEIVED_CAP);
 }
 
 void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
 {
-    clients[cmd.client].setFullname(cmd.fullName);
-    clients[cmd.client].setUsername(cmd.user);
+    Client &client = clients[cmd.client];
+    client.setFullname(cmd.fullName);
+    client.setUsername(cmd.user);
+    client.updateHandshakeState(Client::Handshake::RECEIVED_USER);
+    if (!client.isAuthenticated() && client.readyToAuthenticate())
+    {
+        authenticate(client);
+    }
 }
 
 void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
 {
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
     std::string channelName = cmd.channel.substr(cmd.channel.find('#') + 1);
     Channel *channel = channels.getChannel(channelName);
     if (!channel)
