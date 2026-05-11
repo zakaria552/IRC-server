@@ -49,6 +49,16 @@ void Channel::addClient(int clientId)
     clients.push_back(clientId);
 }
 
+void Channel::removeClient(int clientId)
+{
+    auto it = std::find(clients.begin(), clients.end(), clientId);
+    if (it != clients.end())
+    {
+        clients.erase(it);
+        operators[clientId] = false;
+    }
+}
+
 BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg)
 {
     BroadcastMessage msgQueue;
@@ -177,8 +187,12 @@ std::string Channel::listModes() const
     return modes + modeArgs;
 }
 
-
 bool Channel::isFull()
 {
     return modeIsSet(USER_LIMIT) && clients.size() >= maxUsers;
+}
+
+bool Channel::isEmpty()
+{
+    return clients.empty();
 }

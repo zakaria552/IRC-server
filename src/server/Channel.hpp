@@ -47,6 +47,7 @@ public:
     bool isInvited(const std::string &);
     void removeInvite(const std::string &);
     void addClient(int clientId);
+    void removeClient(int clientId);
     BroadcastMessage constructMessage(const Client &sender, const std::string &msg);
     uint8_t getModes();
     const std::vector<int> &getClients() const ;
@@ -63,4 +64,5 @@ public:
     bool isOperator(int clientFd);
     std::string listModes() const;
     bool isFull();
+    bool isEmpty();
 };
