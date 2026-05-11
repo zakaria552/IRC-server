@@ -164,11 +164,10 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
     }
 }
 // [TODO] remove stale messages
-// [TODO] remove client from channels
 void IrcServer::clientDisconnected(int clientFd)
 {
     Logger::info("Client disconnected");
-
+    channels.leaveAll(clientFd);
     // .erase() was sometimes returning 0 instead of expected 1 element removed.
     if (clients.erase(clientFd) == 0) [[unlikely]]
     {
