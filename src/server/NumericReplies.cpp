@@ -3,11 +3,17 @@
 #include <string>
 #include <sys/socket.h>
 #include "server/globals.hpp"
-#include "utils/Logger.hpp"
 
 std::string NumericReplies::makeBody(int errCode, const std::string &nick, const std::string &channel, const std::string &msg)
 {
     std::string body = nick + " #" + channel + " :" + msg;
+    std::string fullBody = ":" + serverName + " " + std::to_string(errCode) + " " + body + "\r\n";
+    return fullBody;
+}
+
+std::string NumericReplies::makeBody(int errCode, const std::string &nick, const std::string &msg)
+{
+    std::string body = nick + " :" + msg;
     std::string fullBody = ":" + serverName + " " + std::to_string(errCode) + " " + body + "\r\n";
     return fullBody;
 }
@@ -90,4 +96,12 @@ Message NumericReplies::channelIsFull(const std::string &channel, const Client &
 Message NumericReplies::invalidModeParams(const std::string &channel, const Client &client, const std::string &mode, const std::string &description)
 {
     return {client.getSocket(), NumericReplies::makeBody(696, client.getNick(), channel + " " + mode, description)};
+}
+
+Message NumericReplies::nickInUse(const std::string &newNick, const Client &client)
+{
+    std::string nickName = client.getNick();
+    if (nickName.empty())
+        nickName = "*";
+    return {client.getSocket(), NumericReplies::makeBody(433, nickName + " " + newNick, "Nickname is already in use")};
 }

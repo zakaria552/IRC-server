@@ -9,6 +9,7 @@ class NumericReplies
 public:
     NumericReplies() = delete;
     static std::string makeBody(int errCode, const std::string &nick, const std::string &channel, const std::string &msg);
+    static std::string makeBody(int errCode, const std::string &nick, const std::string &msg);
     static std::string welcome();
     static std::string passMisMatch();
     static std::string topicReply(const std::string &channel, const std::string &nick, const std::string &topic);
@@ -19,6 +20,7 @@ public:
     static Message isChannelMember(const std::string &channel, const Client &sender, const Client &receiver);
     static Message isInviteOnly(const std::string &channel, const Client &client);
     static Message invalidChannelKey(const std::string &channel, const Client &client);
+    static Message nickInUse(const std::string &nick, const Client &client);
 //    static Message invalidModeParam(const std::string &channel, const Client &client);
     static Message setServerName(const std::string &name);
     static Message noSuchUser(const Client &client, const std::string &targetNick);

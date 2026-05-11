@@ -475,13 +475,21 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
 
 void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
 {
-    std::string nick = cmd.nickname;
-    Client &client = clients[cmd.client];
-    client.setNick(nick);
-    client.updateHandshakeState(Client::Handshake::RECEIVED_NICK);
-    if (!client.isAuthenticated() && client.readyToAuthenticate())
+    Client *client = getClientByNick(cmd.nickname);
+    if (client)
     {
-        authenticate(client);
+        queueMessages.push(NumericReplies::nickInUse(cmd.nickname, clients[cmd.client]));
+        return;
+    }
+    else
+    {
+        client = &clients[cmd.client];
+    }
+    client->setNick(cmd.nickname);
+    client->updateHandshakeState(Client::Handshake::RECEIVED_NICK);
+    if (!client->isAuthenticated() && client->readyToAuthenticate())
+    {
+        authenticate(*client);
     }
 }
 
