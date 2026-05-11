@@ -99,3 +99,30 @@ Channel *ChannelsManager::getChannel(const std::string &channel)
 {
     return channelExist(channel) ? &channels[channel] : nullptr;
 }
+
+void ChannelsManager::leaveAll(int clientFd)
+{
+    for(auto it = channels.begin(); it != channels.end();)
+    {
+        if (it->second.isMember(clientFd))
+        {
+            it->second.removeClient(clientFd);
+            if (it->second.isEmpty())
+            {
+                it = channels.erase(it);
+                continue;
+            }
+        }
+        it++;
+    }
+}
+
+void ChannelsManager::leaveChannel(const std::string &channel, int clientFd)
+{
+    if (channels.find(channel) != channels.end() && channels[channel].isMember(clientFd))
+    {
+        channels[channel].removeClient(clientFd);
+        if (channels[channel].isEmpty())
+            channels.erase(channel);
+    }
+}
