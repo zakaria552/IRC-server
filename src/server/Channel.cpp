@@ -1,6 +1,6 @@
 #include "Channel.hpp"
 #include "server/Client.hpp"
-#include "server/QueueMessages.hpp"
+#include "server/MessageBroker.hpp"
 #include "utils/Logger.hpp"
 #include <algorithm>
 #include <string>
@@ -59,9 +59,9 @@ void Channel::removeClient(int clientId)
     }
 }
 
-BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg)
+MessageBroker::BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg)
 {
-    BroadcastMessage msgQueue;
+    MessageBroker::BroadcastMessage msgQueue;
     std::string src = ":" + sender.getNick();
     std::string body = src + " PRIVMSG #" + name + " :" + msg + "\r\n";
     msgQueue.msg = body;

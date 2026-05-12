@@ -1,6 +1,5 @@
 #pragma once
 #include <netdb.h>
-#include <queue>
 #include <string>
 #include <sys/poll.h>
 #include <sys/socket.h>
@@ -12,7 +11,7 @@
 #include "commands/IrcCommand.hpp"
 #include "server/ChannelsManager.hpp"
 #include "server/Client.hpp"
-#include "server/QueueMessages.hpp"
+#include "server/MessageBroker.hpp"
 
 using Clients = std::unordered_map<int, Client>;
 #define DEFAULT_BACKLOG 10
@@ -25,8 +24,7 @@ class IrcServer
     IOEventPoller ioEvents;
     RawCommandParser parser;
     Clients clients;
-    std::queue<Message> queueMessages;
-    std::queue<BroadcastMessage> queueBroadcastMessages;
+    MessageBroker msgBroker;
     ChannelsManager channels;
 public:
     IrcServer() = delete;
@@ -38,7 +36,6 @@ private:
     void clientDisconnected(int clientFd);
     void processRequest(int clientFd, const char *body, const size_t length);
     std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws, int clientFd);
-    void flushMsgQueues();
     void authenticate(Client &client);
     void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd);
     void HandleUserCmd(const IrcCommand::UserCmd &cmd);

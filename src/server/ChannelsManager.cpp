@@ -1,12 +1,12 @@
 #include "ChannelsManager.hpp"
 #include "server/Channel.hpp"
 #include "server/Client.hpp"
-#include "server/QueueMessages.hpp"
+#include "server/MessageBroker.hpp"
 #include "utils/Logger.hpp"
 
 
-ChannelsManager::ChannelsManager(std::queue<BroadcastMessage> &queue)
-    : queue(queue)
+ChannelsManager::ChannelsManager(MessageBroker &broker)
+    : msgBroker(broker)
 {
 
 }
@@ -47,26 +47,24 @@ void ChannelsManager::sendMessage(const Client &sender, const std::string &targe
         Logger::debug("Channel not found: [" + room + "]");
         return;
     }
-    queue.push(channels[room].constructMessage(sender, msg));
+    msgBroker.enqueue(channels[room].constructMessage(sender, msg));
 }
 
 
 void ChannelsManager::broadcastModeChange(const Client &client, const std::string &channel, const std::string &rawCmd)
 {
-    BroadcastMessage broadcast;
+    MessageBroker::BroadcastMessage broadcast;
     broadcast.clientFds = channels[channel].getClients();
     broadcast.msg = ":" + client.getNick() + " " + rawCmd + "\r\n";
-    broadcast.totalSent = 0;
-    queue.push(broadcast);
+    msgBroker.enqueue(broadcast);
 }
 
 void ChannelsManager::broadcastJoinedUser(const Client &client, const std::string &channel)
 {
-    BroadcastMessage broadcast; //:WiZ JOIN #Twilight_zone
+    MessageBroker::BroadcastMessage broadcast; //:WiZ JOIN #Twilight_zone
     broadcast.clientFds = channels[channel].getClients();
     broadcast.msg = ":" + client.getNick() + " JOIN " + "#" + channel + "\r\n";
-    broadcast.totalSent = 0;
-    queue.push(broadcast);
+    msgBroker.enqueue(broadcast);
 }
 
 bool ChannelsManager::channelExist(const std::string &channelName)

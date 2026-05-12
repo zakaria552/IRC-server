@@ -7,7 +7,7 @@
 #include "server/ChannelsManager.hpp"
 #include "server/Client.hpp"
 #include "server/NumericReplies.hpp"
-#include "server/QueueMessages.hpp"
+#include "server/MessageBroker.hpp"
 #include "utils/Logger.hpp"
 #include <cerrno>
 #include <charconv>
@@ -20,7 +20,7 @@
 #include "server/globals.hpp"
 
 IrcServer::IrcServer(const std::string &name, const char *port, const char *password)
-    : password(password), queueBroadcastMessages(), channels(queueBroadcastMessages)
+    : password(password), msgBroker{}, channels(msgBroker)
 {
     struct addrinfo req{}, *res, *p;
     req.ai_family = AF_INET;
@@ -87,7 +87,7 @@ void IrcServer::start()
             else
                 Logger::warning("Recv failed");
         }
-        flushMsgQueues();
+        msgBroker.flush();
     }
 }
 
@@ -174,7 +174,7 @@ void IrcServer::clientDisconnected(int clientFd)
         Logger::error("UNEXPECTED FAIL TO ERASE CLIENT!");
         std::exit(1);
     }
-
+    msgBroker.removeStaleMessages(clientFd);
     ioEvents.remove(clientFd);
     close(clientFd);
 }
@@ -209,35 +209,13 @@ void IrcServer::authenticate(Client &client)
     {
         Logger::debug("Failed to authenticate client, booting them off from server");
         std::string body = NumericReplies::passMisMatch();
-        queueMessages.push({client.getSocket(), body});
+        msgBroker.enqueue({client.getSocket(), body});
         clientDisconnected(client.getSocket());
         return;
     }
     std::string body = NumericReplies::welcome() + client.getNick() + " :Welcome to the Internet Relay Network " + client.getNick() + "\r\n";
-    queueMessages.push({client.getSocket(), body});
+    msgBroker.enqueue({client.getSocket(), body});
     client.updateHandshakeState(Client::Handshake::AUTHENTICATED);
-}
-
-void IrcServer::flushMsgQueues()
-{
-    while (!queueMessages.empty())
-    {
-        const Message &msg = queueMessages.front();
-        if (send(msg.clientFd, msg.msg.c_str(), msg.msg.length(), MSG_DONTWAIT | MSG_NOSIGNAL) == -1)
-            return;
-        queueMessages.pop();
-    }
-    while (!queueBroadcastMessages.empty())
-    {
-        BroadcastMessage &msg = queueBroadcastMessages.front();
-        for (size_t i = msg.totalSent; i < msg.clientFds.size(); i++)
-        {
-            if (send(msg.clientFds[i], msg.msg.c_str(), msg.msg.length(), MSG_DONTWAIT | MSG_NOSIGNAL) == -1)
-                return;
-            msg.totalSent++;
-        }
-        queueBroadcastMessages.pop();
-    }
 }
 
 // Handlers
@@ -248,7 +226,7 @@ void IrcServer::HandlePingCmd(const IrcCommand::PingCmd &cmd)
         return;
     std::string src = ":";
     std::string body = src + serverName + " " + cmd.token + "\r\n";
-    queueMessages.push({cmd.client, body});
+    msgBroker.enqueue({cmd.client, body});
 }
 
 void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
@@ -260,7 +238,7 @@ void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
     {
         Channel *channel = channels.getChannel(cmd.targets.substr(1));
         if (channel)
-            queueBroadcastMessages.push(channel->constructMessage(clients[cmd.client], cmd.say_text));
+            msgBroker.enqueue(channel->constructMessage(clients[cmd.client], cmd.say_text));
         return;
     }
     for(auto [fd, client]: clients)
@@ -270,7 +248,7 @@ void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
         {
             std::string src = ":" + clients[cmd.client].getNick();
             std::string body = src + " PRIVMSG " + cmd.targets + " :" + cmd.say_text + "\r\n";
-            queueMessages.push({fd, body});
+            msgBroker.enqueue({fd, body});
             return;
         }
     }
@@ -285,12 +263,12 @@ void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
     Channel *channel = channels.getChannel(cmd.channel);
     if (!channel)
     {
-        queueMessages.push(NumericReplies::channelNotFound(cmd.channel, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::channelNotFound(cmd.channel, clients[cmd.client]));
         return;
     }
     if (!channel->isMember(cmd.client))
     {
-        queueMessages.push(NumericReplies::notChannelMember(cmd.channel, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::notChannelMember(cmd.channel, clients[cmd.client]));
         return;
     }
     for(auto [fd, client]:clients)
@@ -300,13 +278,13 @@ void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
         {
             if (channel->isMember(fd))
             {
-                queueMessages.push(NumericReplies::isChannelMember(cmd.channel, clients[cmd.client], client));
+               msgBroker.enqueue(NumericReplies::isChannelMember(cmd.channel, clients[cmd.client], client));
                 return;
             }
             std::string src = ":" + clients[cmd.client].getNick();
             std::string body = src + " INVITE " + nick + " :#" + cmd.channel + "\r\n";
             channel->invite(cmd.nick);
-            queueMessages.push({fd, body});
+            msgBroker.enqueue({fd, body});
             return;
         }
     }
@@ -322,23 +300,23 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
     const std::string channelName = cmd.target.substr(1);
     if (!channels.channelExist(channelName))
     {
-        queueMessages.push(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
         return;
     }
     if (!channels.isMemberOfChannel(channelName, cmd.client))
     {
-        queueMessages.push(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
         return;
     }
     Channel *channel = channels.getChannel(channelName);
     if (cmd.listOfModes.empty())
     {
-        queueMessages.push(NumericReplies::listModes(channelName, channel->listModes(), clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::listModes(channelName, channel->listModes(), clients[cmd.client]));
         return;
     }
     if (!channel->isOperator(cmd.client))
     {
-        queueMessages.push(NumericReplies::isNotOperator(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::isNotOperator(channelName, clients[cmd.client]));
         return;
     }
     std::string strModes = "MODE " + cmd.target + " ";
@@ -384,7 +362,7 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
                         j++;
                         if (res.ec == std::errc::invalid_argument || res.ec == std::errc::result_out_of_range || maxUser < 0)
                         {
-                            queueMessages.push(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + cmd.params[j-1], "Invalid argument"));
+                            msgBroker.enqueue(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + cmd.params[j-1], "Invalid argument"));
                             continue;
                         }
                         channel->setMaxUserLimit(maxUser);
@@ -408,12 +386,12 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
                     j++;
                     if (!target)
                     {
-                        queueMessages.push(NumericReplies::noSuchUser(clients[cmd.client], cmd.params[j - 1]));
+                        msgBroker.enqueue(NumericReplies::noSuchUser(clients[cmd.client], cmd.params[j - 1]));
                         continue;
                     }
                     if (!channels.isMemberOfChannel(channelName, target->getSocket()))
                     {
-                        queueMessages.push(NumericReplies::userNotInChannel(channelName, clients[cmd.client], *target));
+                        msgBroker.enqueue(NumericReplies::userNotInChannel(channelName, clients[cmd.client], *target));
                         continue;
                     }
                     channel->updateOperators(target->getSocket(), intent == '+');
@@ -448,17 +426,17 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
             continue;
         if (channel && channel->modeIsSet(Channel::Mode::INVITE_ONLY) && !channel->isInvited(client.getNick()))
         {
-            queueMessages.push(NumericReplies::isInviteOnly(channelName, clients[cmd.client]));
+            msgBroker.enqueue(NumericReplies::isInviteOnly(channelName, clients[cmd.client]));
             continue;
         }
         if (channel && channel->modeIsSet(Channel::Mode::REQUIRE_PASS) && (cmd.keys.size() <= i || !channel->isValidKey(cmd.keys[i])))
         {
-            queueMessages.push(NumericReplies::invalidChannelKey(channelName, clients[cmd.client]));
+            msgBroker.enqueue(NumericReplies::invalidChannelKey(channelName, clients[cmd.client]));
             continue;
         }
         if (channel && channel->modeIsSet(Channel::Mode::USER_LIMIT) && channel->isFull())
         {
-            queueMessages.push(NumericReplies::channelIsFull(channelName, clients[cmd.client]));
+            msgBroker.enqueue(NumericReplies::channelIsFull(channelName, clients[cmd.client]));
             continue;
         }
         if (!channel)
@@ -477,11 +455,13 @@ void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
     Client *client = getClientByNick(cmd.nickname);
     if (client)
     {
-        queueMessages.push(NumericReplies::nickInUse(cmd.nickname, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::nickInUse(cmd.nickname, clients[cmd.client]));
+        Logger::info("Duplicate name");
         return;
     }
     else
     {
+        Logger::info("Setting new nick");
         client = &clients[cmd.client];
     }
     client->setNick(cmd.nickname);
@@ -530,12 +510,12 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
     Channel *channel = channels.getChannel(channelName);
     if (!channel)
     {
-        queueMessages.push(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
         return;
     }
     if (!channel->isMember(cmd.client))
     {
-        queueMessages.push(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
         return;
     }
     // TOPIC with no colon present - query mode
@@ -544,34 +524,33 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
         const std::string &topic = channel->getTopic();
         if (topic.empty())
         {
-            queueMessages.push({cmd.client, NumericReplies::noTopicReply(channelName, clients[cmd.client].getNick())});
+           msgBroker.enqueue({cmd.client, NumericReplies::noTopicReply(channelName, clients[cmd.client].getNick())});
         }
         else
         {
-            queueMessages.push({cmd.client, NumericReplies::topicReply(channelName, clients[cmd.client].getNick(), topic)});
-            queueMessages.push({cmd.client, NumericReplies::topicSetBy(channelName, clients[cmd.client].getNick(), channel->getTopicSetter(), channel->getTopicTime())});
+           msgBroker.enqueue({cmd.client, NumericReplies::topicReply(channelName, clients[cmd.client].getNick(), topic)});
+           msgBroker.enqueue({cmd.client, NumericReplies::topicSetBy(channelName, clients[cmd.client].getNick(), channel->getTopicSetter(), channel->getTopicTime())});
         }
         return;
     }
     // If +t mode is set, only ops can change the topic
     if (channel->modeIsSet(Channel::Mode::RESTRICT_TOPIC) && !channel->isOperator(cmd.client))
     {
-        queueMessages.push({cmd.client, NumericReplies::makeBody(482, clients[cmd.client].getNick(), channelName, "You're not channel operator")});
+        msgBroker.enqueue({cmd.client, NumericReplies::makeBody(482, clients[cmd.client].getNick(), channelName, "You're not channel operator")});
         return;
     }
     // Set or clear the topic
     channel->setTopic(cmd.topic, clients[cmd.client].getNick());
-    BroadcastMessage broadcast;
+    MessageBroker::BroadcastMessage broadcast;
     std::string msg = ":" + clients[cmd.client].getNick() + " TOPIC #" + channelName + " :" + cmd.topic + "\r\n";
     broadcast.msg = msg;
-    const std::vector<int> &members = channel->getClients();
-    broadcast.clientFds = members;
-    broadcast.totalSent = 0;
-    queueBroadcastMessages.push(broadcast);
+    broadcast.clientFds = channel->getClients();
+    msgBroker.enqueue(broadcast);
 }
+
 void IrcServer::sendListOfUsers(const Client &client, Channel *channel)
 {
-    Message message; //"<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
+    MessageBroker::Message message; //"<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
     const std::string body = ":" + serverName + " 353 " + client.getNick() + " =" + " #" + channel->getName() + " :";
     const std::vector<int> users = channel->getClients();
     message.clientFd = client.getSocket();
@@ -580,11 +559,11 @@ void IrcServer::sendListOfUsers(const Client &client, Channel *channel)
         Client &member = clients[users[i]];
         std::string opPrefix = channel->isOperator(member.getSocket()) ? "@" : "";
         message.msg = body + opPrefix + member.getNick() + "\r\n";
-        queueMessages.push(message);
+       msgBroker.enqueue(message);
     }
     //:server 366 alice #chat :End of /NAMES list
     message.msg = ":" + serverName + " 366 " + client.getNick() + " #" + channel->getName() + " :End of /NAMES list\r\n";
-    queueMessages.push(message);
+    msgBroker.enqueue(message);
 }
 
 Client *IrcServer::getClientByNick(const std::string &nick)

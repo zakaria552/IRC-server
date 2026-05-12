@@ -4,9 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "server/QueueMessages.hpp"
-
-
+#include "server/MessageBroker.hpp"
 
 class Channel
 {
@@ -48,7 +46,7 @@ public:
     void removeInvite(const std::string &);
     void addClient(int clientId);
     void removeClient(int clientId);
-    BroadcastMessage constructMessage(const Client &sender, const std::string &msg);
+    MessageBroker::BroadcastMessage constructMessage(const Client &sender, const std::string &msg);
     uint8_t getModes();
     const std::vector<int> &getClients() const ;
     bool modeIsSet(Mode mode) const;
