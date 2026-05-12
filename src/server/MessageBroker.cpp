@@ -17,7 +17,6 @@ void MessageBroker::enqueue(const BroadcastMessage &msg)
 void MessageBroker::flush()
 {
     retryFailedMessages();
-    Logger::debug("Total msgs: " + std::to_string(queueMessages.size()));
     std::erase_if(queueMessages, [&](Message &msg) {
         if (send(msg.clientFd, msg.msg.c_str(), msg.msg.length(), MSG_DONTWAIT | MSG_NOSIGNAL) == -1)
         {
@@ -26,9 +25,7 @@ void MessageBroker::flush()
         }
         return true;
     });
-    Logger::debug("After total msgs: " + std::to_string(queueMessages.size()));
 
-    Logger::debug("Total broadcast msgs: " + std::to_string(queueBroadcastMessages.size()));
     std::erase_if( queueBroadcastMessages, [&](BroadcastMessage &msg) {
         std::erase_if(msg.clientFds, [&](int clientFd) {
             if (send(clientFd, msg.msg.c_str(), msg.msg.length(), MSG_DONTWAIT | MSG_NOSIGNAL) == -1)
@@ -40,7 +37,6 @@ void MessageBroker::flush()
         });
         return msg.clientFds.empty();
     });
-    Logger::debug("After total broadcast msgs: " + std::to_string(queueBroadcastMessages.size()));
 }
 
 void MessageBroker::removeStaleMessages(int clientFd)
@@ -70,7 +66,6 @@ void MessageBroker::removeStaleMessages(int clientFd)
 
 void MessageBroker::retryFailedMessages()
 {
-    Logger::debug("Total retry msgs: " + std::to_string(retries.size()));
     std::erase_if(retries, [&](RetryMessage &retry) {
         if (send(retry.message.clientFd, retry.message.msg.c_str(), retry.message.msg.length(), MSG_DONTWAIT | MSG_NOSIGNAL) == -1)
         {
@@ -79,9 +74,7 @@ void MessageBroker::retryFailedMessages()
         }
         return (retry.attempts == MAX_RETRY_ATTEMPT);
     });
-    Logger::debug("After total retry msgs: " + std::to_string(retries.size()));
 
-    Logger::debug("Total retry broadcast msgs: " + std::to_string(retries.size()));
     std::erase_if( broadcastRetries, [&](RetryBroadcastMessage &retry) {
         std::erase_if(retry.message.clientFds, [&](int clientFd) {
             if (send(clientFd, retry.message.msg.c_str(), retry.message.msg.length(), MSG_DONTWAIT | MSG_NOSIGNAL) == -1)
@@ -94,5 +87,4 @@ void MessageBroker::retryFailedMessages()
         retry.attempts++;
         return retry.message.clientFds.empty() || (retry.attempts == MAX_RETRY_ATTEMPT);
     });
-    Logger::debug("After total retry broadcast msgs: " + std::to_string(retries.size()));
 }
