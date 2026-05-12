@@ -1,8 +1,8 @@
 #pragma once
 
 #include "server/Client.hpp"
+#include "server/MessageBroker.hpp"
 #include <string>
-#include "server/QueueMessages.hpp"
 
 class NumericReplies
 {
@@ -15,19 +15,19 @@ public:
     static std::string topicReply(const std::string &channel, const std::string &nick, const std::string &topic);
     static std::string noTopicReply(const std::string &channel, const std::string &nick);
     static std::string topicSetBy(const std::string &channel, const std::string &nick, const std::string &setter, const std::string &time);
-    static Message channelNotFound(const std::string &channel, const Client &client);
-    static Message notChannelMember(const std::string &channel, const Client &client);
-    static Message isChannelMember(const std::string &channel, const Client &sender, const Client &receiver);
-    static Message isInviteOnly(const std::string &channel, const Client &client);
-    static Message invalidChannelKey(const std::string &channel, const Client &client);
-    static Message nickInUse(const std::string &nick, const Client &client);
+    static MessageBroker::Message channelNotFound(const std::string &channel, const Client &client);
+    static MessageBroker::Message notChannelMember(const std::string &channel, const Client &client);
+    static MessageBroker::Message isChannelMember(const std::string &channel, const Client &sender, const Client &receiver);
+    static MessageBroker::Message isInviteOnly(const std::string &channel, const Client &client);
+    static MessageBroker::Message invalidChannelKey(const std::string &channel, const Client &client);
+    static MessageBroker::Message nickInUse(const std::string &nick, const Client &client);
 //    static Message invalidModeParam(const std::string &channel, const Client &client);
-    static Message setServerName(const std::string &name);
-    static Message noSuchUser(const Client &client, const std::string &targetNick);
-    static Message userNotInChannel(const std::string &channel, const Client &client, const Client &target);
-    static Message channelIsFull(const std::string &channel, const Client &client);
+    static MessageBroker::Message setServerName(const std::string &name);
+    static MessageBroker::Message noSuchUser(const Client &client, const std::string &targetNick);
+    static MessageBroker::Message userNotInChannel(const std::string &channel, const Client &client, const Client &target);
+    static MessageBroker::Message channelIsFull(const std::string &channel, const Client &client);
     // modes
-    static Message isNotOperator(const std::string &channel, const Client &client);
-    static Message listModes(const std::string &channel, const std::string &modes, const Client &client);
-    static Message invalidModeParams(const std::string &channel, const Client &client, const std::string &mode, const std::string &description);
+    static MessageBroker::Message isNotOperator(const std::string &channel, const Client &client);
+    static MessageBroker::Message listModes(const std::string &channel, const std::string &modes, const Client &client);
+    static MessageBroker::Message invalidModeParams(const std::string &channel, const Client &client, const std::string &mode, const std::string &description);
 };
