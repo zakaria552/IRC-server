@@ -234,25 +234,28 @@ void IrcServer::HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd)
     Client &client = clients[cmd.client];
     if (!client.isAuthenticated())
         return;
-    if (cmd.targets[0] == '#')
+    for(auto &target: cmd.targets)
     {
-        Channel *channel = channels.getChannel(cmd.targets.substr(1));
-        if (channel)
-            msgBroker.enqueue(channel->constructMessage(clients[cmd.client], cmd.say_text));
-        return;
-    }
-    for(auto [fd, client]: clients)
-    {
-        std::string_view nick = client.getNick();
-        if (fd != cmd.client && nick == cmd.targets)
+        if (target[0] == '#')
         {
-            std::string src = ":" + clients[cmd.client].getNick();
-            std::string body = src + " PRIVMSG " + cmd.targets + " :" + cmd.say_text + "\r\n";
-            msgBroker.enqueue({fd, body});
-            return;
+            std::string channelName = target.substr(1);
+            bool onlyToOperators = channelName.starts_with('@');
+            if (onlyToOperators)
+                channelName = channelName.substr(1);
+            Channel *channel = channels.getChannel(channelName);
+            if (channel)
+                msgBroker.enqueue(channel->constructMessage(client, cmd.say_text, onlyToOperators));
+            continue;
+        }
+        Client *recepient = this->getClientByNick(target);
+        if (recepient && (recepient->getSocket() != cmd.client))
+        {
+            std::string src = ":" + client.getNick();
+            std::string body = src + " PRIVMSG " + target + " :" + cmd.say_text + "\r\n";
+            msgBroker.enqueue({recepient->getSocket(), body});
+            continue;
         }
     }
-    Logger::debug("Not found user to send the message");
 }
 
 void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
@@ -263,31 +266,29 @@ void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
     Channel *channel = channels.getChannel(cmd.channel);
     if (!channel)
     {
-        msgBroker.enqueue(NumericReplies::channelNotFound(cmd.channel, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::channelNotFound(cmd.channel, client));
         return;
     }
     if (!channel->isMember(cmd.client))
     {
-        msgBroker.enqueue(NumericReplies::notChannelMember(cmd.channel, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::notChannelMember(cmd.channel, client));
         return;
     }
-    for(auto [fd, client]:clients)
+    Client *recipient = getClientByNick(cmd.nick);
+    if (!recipient || (recipient->getSocket() == cmd.client))
     {
-        const std::string nick = client.getNick();
-        if (fd != cmd.client && nick == cmd.nick)
-        {
-            if (channel->isMember(fd))
-            {
-               msgBroker.enqueue(NumericReplies::isChannelMember(cmd.channel, clients[cmd.client], client));
-                return;
-            }
-            std::string src = ":" + clients[cmd.client].getNick();
-            std::string body = src + " INVITE " + nick + " :#" + cmd.channel + "\r\n";
-            channel->invite(cmd.nick);
-            msgBroker.enqueue({fd, body});
-            return;
-        }
+        msgBroker.enqueue(NumericReplies::noSuchUser(client, cmd.nick));
+        return;
     }
+    if (channel->isMember(recipient->getSocket()))
+    {
+        msgBroker.enqueue(NumericReplies::isChannelMember(cmd.channel, client, *recipient));
+        return;
+    }
+    std::string src = ":" + client.getNick();
+    std::string body = src + " INVITE " + cmd.nick + " :#" + cmd.channel + "\r\n";
+    channel->invite(cmd.nick);
+    msgBroker.enqueue({recipient->getSocket(), body});
 }
 
 void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
@@ -443,6 +444,8 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
             channel = channels.newChannel(channelName);
         else if (channel->isBlackListed(cmd.client))
             continue; // [TODO] handle
+        if (channel->modeIsSet(Channel::INVITE_ONLY))
+            channel->removeInvite(client.getNick());
         channel->addClient(cmd.client);
         channels.broadcastJoinedUser(client, channelName);
         sendListOfUsers(client, channel);
@@ -456,12 +459,12 @@ void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
     if (client)
     {
         msgBroker.enqueue(NumericReplies::nickInUse(cmd.nickname, clients[cmd.client]));
-        Logger::info("Duplicate name");
+        Logger::debug("Duplicate name");
         return;
     }
     else
     {
-        Logger::info("Setting new nick");
+        Logger::debug("Setting new nick");
         client = &clients[cmd.client];
     }
     client->setNick(cmd.nickname);
