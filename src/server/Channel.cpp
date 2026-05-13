@@ -59,7 +59,7 @@ void Channel::removeClient(int clientId)
     }
 }
 
-MessageBroker::BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg)
+MessageBroker::BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg, bool onlyOperators)
 {
     MessageBroker::BroadcastMessage msgQueue;
     std::string src = ":" + sender.getNick();
@@ -67,7 +67,7 @@ MessageBroker::BroadcastMessage Channel::constructMessage(const Client &sender, 
     msgQueue.msg = body;
     for(auto client: clients)
     {
-        if (client == sender.getSocket())
+        if (client == sender.getSocket() || (onlyOperators && !this->isOperator(client)))
             continue;
         msgQueue.clientFds.push_back(client);
         Logger::debug("Sent message to client: " + std::to_string(client) + " , " + body);
@@ -101,7 +101,7 @@ uint8_t Channel::getModes()
 
 void Channel::invite(const std::string &user)
 {
-    inviteList.push_back(user);
+    inviteList.insert(user);
 }
 
 bool Channel::isInvited(const std::string &user)

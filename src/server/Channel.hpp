@@ -1,6 +1,7 @@
 #pragma once
 #include "server/Client.hpp"
 #include <cstdint>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -26,7 +27,7 @@ private:
     std::string key = {};
     std::vector<int> clients = {};
     std::vector<int> blackList = {};
-    std::vector<std::string> inviteList = {};
+    std::set<std::string> inviteList = {};
     std::unordered_map<int, bool> operators = {};
     uint8_t modes = INVITE_ONLY; // unspecified for now
     [[maybe_unused]] unsigned int maxUsers;
@@ -46,7 +47,7 @@ public:
     void removeInvite(const std::string &);
     void addClient(int clientId);
     void removeClient(int clientId);
-    MessageBroker::BroadcastMessage constructMessage(const Client &sender, const std::string &msg);
+    MessageBroker::BroadcastMessage constructMessage(const Client &sender, const std::string &msg, bool onlyOperators = false);
     uint8_t getModes();
     const std::vector<int> &getClients() const ;
     bool modeIsSet(Mode mode) const;
