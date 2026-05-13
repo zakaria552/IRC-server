@@ -1,6 +1,7 @@
 #ifndef _IRC_COMMANDS_HPP_
 #define _IRC_COMMANDS_HPP_
 
+#include <vector>
 enum Type
 {
     UNDEFINED,
@@ -52,7 +53,7 @@ struct JoinCmd : public BaseCmd
 struct PrivMsgCmd : public BaseCmd
 {
     std::string say_text;
-    std::string targets;
+    std::vector<std::string> targets;
 };
 
 struct PingCmd : public BaseCmd
