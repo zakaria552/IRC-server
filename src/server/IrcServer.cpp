@@ -159,6 +159,9 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
             case IrcCommand::TOPIC:
                 HandleTopicCmd(cmds.front().payload.topic);
                 break;
+            case IrcCommand::PART:
+                HandlePartCmd(cmds.front().payload.part);
+                break;
         }
         cmds.pop();
     }
@@ -301,23 +304,23 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
     const std::string channelName = cmd.target.substr(1);
     if (!channels.channelExist(channelName))
     {
-        msgBroker.enqueue(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::channelNotFound(channelName, client));
         return;
     }
     if (!channels.isMemberOfChannel(channelName, cmd.client))
     {
-        msgBroker.enqueue(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::notChannelMember(channelName, client));
         return;
     }
     Channel *channel = channels.getChannel(channelName);
     if (cmd.listOfModes.empty())
     {
-        msgBroker.enqueue(NumericReplies::listModes(channelName, channel->listModes(), clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::listModes(channelName, channel->listModes(), client));
         return;
     }
     if (!channel->isOperator(cmd.client))
     {
-        msgBroker.enqueue(NumericReplies::isNotOperator(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::isNotOperator(channelName, client));
         return;
     }
     std::string strModes = "MODE " + cmd.target + " ";
@@ -363,7 +366,7 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
                         j++;
                         if (res.ec == std::errc::invalid_argument || res.ec == std::errc::result_out_of_range || maxUser < 0)
                         {
-                            msgBroker.enqueue(NumericReplies::invalidModeParams(channelName, clients[cmd.client], "l " + cmd.params[j-1], "Invalid argument"));
+                            msgBroker.enqueue(NumericReplies::invalidModeParams(channelName, client, "l " + cmd.params[j-1], "Invalid argument"));
                             continue;
                         }
                         channel->setMaxUserLimit(maxUser);
@@ -387,12 +390,12 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
                     j++;
                     if (!target)
                     {
-                        msgBroker.enqueue(NumericReplies::noSuchUser(clients[cmd.client], cmd.params[j - 1]));
+                        msgBroker.enqueue(NumericReplies::noSuchUser(client, cmd.params[j - 1]));
                         continue;
                     }
                     if (!channels.isMemberOfChannel(channelName, target->getSocket()))
                     {
-                        msgBroker.enqueue(NumericReplies::userNotInChannel(channelName, clients[cmd.client], *target));
+                        msgBroker.enqueue(NumericReplies::userNotInChannel(channelName, client, *target));
                         continue;
                     }
                     channel->updateOperators(target->getSocket(), intent == '+');
@@ -411,7 +414,7 @@ void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
         }
     }
     if (shouldBroadcastModeChange)
-        channels.broadcastModeChange(clients[cmd.client], channelName, strModes + params);
+        channels.broadcastModeChange(client, channelName, strModes + params);
 }
 
 void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
@@ -427,17 +430,17 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
             continue;
         if (channel && channel->modeIsSet(Channel::Mode::INVITE_ONLY) && !channel->isInvited(client.getNick()))
         {
-            msgBroker.enqueue(NumericReplies::isInviteOnly(channelName, clients[cmd.client]));
+            msgBroker.enqueue(NumericReplies::isInviteOnly(channelName, client));
             continue;
         }
         if (channel && channel->modeIsSet(Channel::Mode::REQUIRE_PASS) && (cmd.keys.size() <= i || !channel->isValidKey(cmd.keys[i])))
         {
-            msgBroker.enqueue(NumericReplies::invalidChannelKey(channelName, clients[cmd.client]));
+            msgBroker.enqueue(NumericReplies::invalidChannelKey(channelName, client));
             continue;
         }
         if (channel && channel->modeIsSet(Channel::Mode::USER_LIMIT) && channel->isFull())
         {
-            msgBroker.enqueue(NumericReplies::channelIsFull(channelName, clients[cmd.client]));
+            msgBroker.enqueue(NumericReplies::channelIsFull(channelName, client));
             continue;
         }
         if (!channel)
@@ -497,6 +500,7 @@ void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
     Client &client = clients[cmd.client];
     client.setFullname(cmd.fullName);
     client.setUsername(cmd.user);
+    client.setHost(cmd.host);
     client.updateHandshakeState(Client::Handshake::RECEIVED_USER);
     if (!client.isAuthenticated() && client.readyToAuthenticate())
     {
@@ -513,12 +517,12 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
     Channel *channel = channels.getChannel(channelName);
     if (!channel)
     {
-        msgBroker.enqueue(NumericReplies::channelNotFound(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::channelNotFound(channelName, client));
         return;
     }
     if (!channel->isMember(cmd.client))
     {
-        msgBroker.enqueue(NumericReplies::notChannelMember(channelName, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::notChannelMember(channelName, client));
         return;
     }
     // TOPIC with no colon present - query mode
@@ -527,45 +531,85 @@ void IrcServer::HandleTopicCmd(const IrcCommand::TopicCmd &cmd)
         const std::string &topic = channel->getTopic();
         if (topic.empty())
         {
-           msgBroker.enqueue({cmd.client, NumericReplies::noTopicReply(channelName, clients[cmd.client].getNick())});
+           msgBroker.enqueue({cmd.client, NumericReplies::noTopicReply(channelName, client.getNick())});
         }
         else
         {
-           msgBroker.enqueue({cmd.client, NumericReplies::topicReply(channelName, clients[cmd.client].getNick(), topic)});
-           msgBroker.enqueue({cmd.client, NumericReplies::topicSetBy(channelName, clients[cmd.client].getNick(), channel->getTopicSetter(), channel->getTopicTime())});
+           msgBroker.enqueue({cmd.client, NumericReplies::topicReply(channelName, client.getNick(), topic)});
+           msgBroker.enqueue({cmd.client, NumericReplies::topicSetBy(channelName, client.getNick(), channel->getTopicSetter(), channel->getTopicTime())});
         }
         return;
     }
     // If +t mode is set, only ops can change the topic
     if (channel->modeIsSet(Channel::Mode::RESTRICT_TOPIC) && !channel->isOperator(cmd.client))
     {
-        msgBroker.enqueue({cmd.client, NumericReplies::makeBody(482, clients[cmd.client].getNick(), channelName, "You're not channel operator")});
+        msgBroker.enqueue({cmd.client, NumericReplies::makeBody(482, client.getNick(), channelName, "You're not channel operator")});
         return;
     }
     // Set or clear the topic
-    channel->setTopic(cmd.topic, clients[cmd.client].getNick());
+    channel->setTopic(cmd.topic, client.getNick());
     MessageBroker::BroadcastMessage broadcast;
-    std::string msg = ":" + clients[cmd.client].getNick() + " TOPIC #" + channelName + " :" + cmd.topic + "\r\n";
+    std::string msg = ":" + client.prefix() + " TOPIC #" + channelName + " :" + cmd.topic + "\r\n";
     broadcast.msg = msg;
     broadcast.clientFds = channel->getClients();
     msgBroker.enqueue(broadcast);
 }
 
+void IrcServer::HandlePartCmd(const IrcCommand::PartCmd &cmd)
+{
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
+    for(const std::string &chan: cmd.channels)
+    {
+        if (!chan.starts_with('#'))
+            continue;
+        std::string channelName = chan.substr(1);
+        Channel *channel = channels.getChannel(channelName);
+        if (!channel)
+        {
+            msgBroker.enqueue(NumericReplies::channelNotFound(channelName, client));
+            continue;
+        }
+        if (!channel->isMember(cmd.client))
+        {
+            msgBroker.enqueue(NumericReplies::notChannelMember(channelName, client));
+            continue;
+        }
+        MessageBroker::BroadcastMessage broadcast;
+        broadcast.msg = ":" + client.prefix() + " PART #" + channelName;
+        if (!cmd.reason.empty())
+            broadcast.msg += " :" + cmd.reason;
+        broadcast.msg += "\r\n";
+        broadcast.clientFds = channel->getClients();
+        msgBroker.enqueue(broadcast);
+        Logger::debug(broadcast.msg);
+        channel = channels.leaveChannel(channelName, cmd.client);
+        if (channel && !channel->hasOperator())
+        {
+            Client &clientToPromote = clients[channel->getOldestClient()];
+            std::string strModes = "MODE " + chan + " +o " + clientToPromote.getNick();
+            channels.broadcastModeChange(clientToPromote, channelName, strModes);
+            channel->updateOperators(clientToPromote.getSocket(), true);
+        }
+    }
+}
+
 void IrcServer::sendListOfUsers(const Client &client, Channel *channel)
 {
     MessageBroker::Message message; //"<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
-    const std::string body = ":" + serverName + " 353 " + client.getNick() + " =" + " #" + channel->getName() + " :";
+    const std::string body = ":" + serverName + " 353 " + client.prefix() + " =" + " #" + channel->getName() + " :";
     const std::vector<int> users = channel->getClients();
     message.clientFd = client.getSocket();
     for(size_t i = 0; i < users.size(); i++)
     {
         Client &member = clients[users[i]];
         std::string opPrefix = channel->isOperator(member.getSocket()) ? "@" : "";
-        message.msg = body + opPrefix + member.getNick() + "\r\n";
-       msgBroker.enqueue(message);
+        message.msg = body + opPrefix + member.prefix() + "\r\n";
+        msgBroker.enqueue(message);
     }
     //:server 366 alice #chat :End of /NAMES list
-    message.msg = ":" + serverName + " 366 " + client.getNick() + " #" + channel->getName() + " :End of /NAMES list\r\n";
+    message.msg = ":" + serverName + " 366 " + client.prefix() + " #" + channel->getName() + " :End of /NAMES list\r\n";
     msgBroker.enqueue(message);
 }
 
