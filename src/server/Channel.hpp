@@ -64,4 +64,7 @@ public:
     std::string listModes() const;
     bool isFull();
     bool isEmpty();
+    int size() const;
+    bool hasOperator();
+    int getOldestClient();
 };

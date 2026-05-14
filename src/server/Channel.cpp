@@ -196,3 +196,23 @@ bool Channel::isEmpty()
 {
     return clients.empty();
 }
+
+int Channel::size() const
+{
+    return clients.size();
+}
+
+bool Channel::hasOperator()
+{
+    for(auto clientFd: clients)
+    {
+        if (isOperator(clientFd))
+            return true;
+    }
+    return false;
+}
+
+int Channel::getOldestClient()
+{
+    return clients[0];
+}
