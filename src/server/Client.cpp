@@ -87,3 +87,13 @@ bool Client::readyToAuthenticate()
         );
     return (handshakeState == requiredState);
 }
+
+void Client::setHost(const std::string &host)
+{
+    this->host = host;
+}
+
+std::string Client::prefix() const
+{
+    return nickname + "!" + username + "@" + host;
+}

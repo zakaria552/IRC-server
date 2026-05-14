@@ -21,6 +21,7 @@ private:
     std::string nickname;
     std::string username;
     std::string fullName;
+    std::string host;
     bool operatorPriv = false;
     uint8_t handshakeState = RECEIVED_NONE;
 public:
@@ -37,9 +38,11 @@ public:
     void setPass(const std::string &pass);
     void setUsername(const std::string &username);
     void setFullname(const std::string &fullname);
+    void setHost(const std::string &host);
     std::string info() const;
     void updateHandshakeState(Handshake state);
     bool isAuthenticated();
     uint8_t getHandshakeState();
     bool readyToAuthenticate();
+    std::string prefix() const;
 };
