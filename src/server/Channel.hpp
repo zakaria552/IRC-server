@@ -26,8 +26,8 @@ private:
     std::string topicTime;
     std::string key = {};
     std::vector<int> clients = {};
-    std::vector<int> blackList = {};
-    std::set<std::string> inviteList = {};
+    std::set<int> blackList = {};
+    std::set<int> inviteList = {};
     std::unordered_map<int, bool> operators = {};
     uint8_t modes = INVITE_ONLY; // unspecified for now
     [[maybe_unused]] unsigned int maxUsers;
@@ -35,16 +35,18 @@ public:
     Channel() = default;
     Channel(const std::string &name);
     ~Channel() = default;
-    bool isBlackListed(int clientId);
-    bool isMember(int clientId);
-    void setTopic(const std::string &toic);
+    bool isBlackListed(int clientFd);
+    bool isMember(int clientFd);
+    void blacklist(int clientFd);
+    void removeFromBlacklist(int clientFd);
+    void setTopic(const std::string &topic);
     void setKey(const std::string &key);
     const std::string getKey() const ;
     void setMaxUserLimit(unsigned int max);
     bool isValidKey(const std::string &key);
-    void invite(const std::string &);
-    bool isInvited(const std::string &);
-    void removeInvite(const std::string &);
+    void invite(int clientFd);
+    bool isInvited(int clientFd);
+    void removeInvite(int clientFd);
     void addClient(int clientId);
     void removeClient(int clientId);
     MessageBroker::BroadcastMessage constructMessage(const Client &sender, const std::string &msg, bool onlyOperators = false);

@@ -8,14 +8,24 @@
 
 Channel::Channel(const std::string &name) : name(name){};
 
-bool Channel::isBlackListed(int clientId)
+bool Channel::isBlackListed(int clientFd)
 {
-    return std::find(blackList.begin(), blackList.end(), clientId) != blackList.end();
+    return std::find(blackList.begin(), blackList.end(), clientFd) != blackList.end();
 }
 
-bool Channel::isMember(int clientId)
+void Channel::blacklist(int clientFd)
 {
-    return std::find(clients.begin(), clients.end(), clientId) != clients.end();
+    blackList.insert(clientFd);
+}
+
+void Channel::removeFromBlacklist(int clientFd)
+{
+    blackList.erase(clientFd);
+}
+
+bool Channel::isMember(int clientFd)
+{
+    return std::find(clients.begin(), clients.end(), clientFd) != clients.end();
 }
 
 void Channel::setTopic(const std::string &topic)
@@ -99,22 +109,21 @@ uint8_t Channel::getModes()
     return modes;
 }
 
-void Channel::invite(const std::string &user)
+void Channel::invite(int clientFd)
 {
-    inviteList.insert(user);
+    inviteList.insert(clientFd);
 }
 
-bool Channel::isInvited(const std::string &user)
+bool Channel::isInvited(int clientFd)
 {
-    return std::find(inviteList.begin(), inviteList.end(), user) != inviteList.end();
+    return std::find(inviteList.begin(), inviteList.end(), clientFd) != inviteList.end();
 }
 
-void Channel::removeInvite(const std::string &user)
+void Channel::removeInvite(int clientFd)
 {
-    auto it = std::find(inviteList.begin(), inviteList.end(), user);
-    if (it != inviteList.end())
-        inviteList.erase(it);
+    inviteList.erase(clientFd);
 }
+
 const std::string &Channel::getTopic() const
 {
     return topic;
