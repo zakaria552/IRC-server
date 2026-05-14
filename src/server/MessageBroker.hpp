@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include <vector>
+#include <set>
 #include <deque>
 
 class MessageBroker
@@ -14,7 +14,7 @@ public:
 
     struct BroadcastMessage
     {
-        std::vector<int> clientFds;
+        std::set<int> clientFds;
         std::string msg;
     };
 
