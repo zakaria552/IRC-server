@@ -45,6 +45,9 @@ IrcCommand::~IrcCommand(void)
         case IrcCommand::Type::TOPIC:
             payload.topic.~TopicCmd();
             break;
+        case IrcCommand::Type::PART:
+            payload.part.~PartCmd();
+            break;
     }
 }
 
@@ -85,6 +88,9 @@ IrcCommand::IrcCommand(IrcCommand&& other) noexcept
             break;
         case TOPIC:
             new (&payload.topic) TopicCmd(std::move(other.payload.topic));
+            break;
+        case PART:
+            new (&payload.part) PartCmd(std::move(other.payload.part));
             break;
     }
 }
@@ -147,6 +153,12 @@ IrcCommand::IrcCommand(TopicCmd cmd)
 : type(TOPIC)
 {
     new (&payload.topic) TopicCmd(std::move(cmd));
+}
+
+IrcCommand::IrcCommand(PartCmd cmd)
+: type(PART)
+{
+    new (&payload.part) PartCmd(std::move(cmd));
 }
 
 /* CmdPayload definitions. */

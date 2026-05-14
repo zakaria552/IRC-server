@@ -26,7 +26,7 @@ static std::vector<std::string> splitToTokens(const std::string &str, const char
        start = end + 1;
        end = str.find(delimiter, start);
     }
-    if (start < (str.size() - 1))
+    if (start <= (str.size() - 1))
         tokens.push_back(str.substr(start));
     return tokens;
 }
@@ -73,6 +73,7 @@ static std::optional<IrcCommand> TryParseUser(RawIrcCommand const& raw)
         return std::nullopt;
     user.user = tokens[1];
     user.client = raw.client;
+    user.host = tokens[3];
     return IrcCommand(user);
 }
 // PASS <password>
@@ -216,6 +217,21 @@ static std::optional<IrcCommand> TryParseTopic(RawIrcCommand const& raw)
     }
     return IrcCommand(cmd);
 }
+// PART <channel>{,<channel>} [<reason>]
+static std::optional<IrcCommand> TryParsePart(RawIrcCommand const& raw)
+{
+    if (!raw.cmd.starts_with("PART"))
+        return std::nullopt;
+    IrcCommand::PartCmd cmd = {};
+    std::vector<std::string> tokens = splitToTokens(raw.cmd, ':');
+    if (tokens.size() > 1)
+        cmd.reason = tokens[1];
+    tokens = splitToTokens(tokens[0], ' ');
+    if (tokens.size() < 2)
+        return std::nullopt;
+    cmd.channels = splitToTokens(tokens[1], ',');
+    return IrcCommand(cmd);
+}
 
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int clientFd)
 {
@@ -297,6 +313,14 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         if (cmd.has_value())
         {
             cmd.value().payload.topic.client = clientFd;
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParsePart(raw);
+        if (cmd.has_value())
+        {
+            cmd.value().payload.part.client = clientFd;
             return cmd;
         }
     }

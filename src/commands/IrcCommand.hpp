@@ -31,6 +31,7 @@ struct IrcCommand
     IrcCommand(InviteCmd);
     IrcCommand(ModeCmd);
     IrcCommand(TopicCmd);
+    IrcCommand(PartCmd);
 
     IrcCommand(IrcCommand&&) noexcept;
 

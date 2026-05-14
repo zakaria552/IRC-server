@@ -14,6 +14,7 @@ enum Type
     PING,
     MODE,
     TOPIC,
+    PART
 };
 
 struct BaseCmd
@@ -36,6 +37,7 @@ struct UserCmd : public BaseCmd
     // UNDONE
     std::string user;
     std::string fullName;
+    std::string host;
 };
 
 struct PassCmd : public BaseCmd
@@ -85,6 +87,12 @@ struct ModeCmd : public BaseCmd
     std::vector<std::string> params;
 };
 
+struct PartCmd : public BaseCmd
+{
+    std::vector<std::string> channels;
+    std::string reason;
+};
+
 union CmdPayload
 {
     CapCmd cap;
@@ -97,6 +105,7 @@ union CmdPayload
     PingCmd ping;
     ModeCmd mode;
     TopicCmd topic;
+    PartCmd part;
 
     CmdPayload();
     ~CmdPayload();
