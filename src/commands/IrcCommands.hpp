@@ -14,7 +14,8 @@ enum Type
     PING,
     MODE,
     TOPIC,
-    PART
+    PART,
+    KICK
 };
 
 struct BaseCmd
@@ -93,6 +94,13 @@ struct PartCmd : public BaseCmd
     std::string reason;
 };
 
+struct KickCmd: public BaseCmd
+{
+    std::vector<std::string> targets;
+    std::string channel;
+    std::string reason;
+};
+
 union CmdPayload
 {
     CapCmd cap;
@@ -106,6 +114,7 @@ union CmdPayload
     ModeCmd mode;
     TopicCmd topic;
     PartCmd part;
+    KickCmd kick;
 
     CmdPayload();
     ~CmdPayload();

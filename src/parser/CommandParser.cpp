@@ -232,6 +232,24 @@ static std::optional<IrcCommand> TryParsePart(RawIrcCommand const& raw)
     cmd.channels = splitToTokens(tokens[1], ',');
     return IrcCommand(cmd);
 }
+// KICK <channel> <user> *( "," <user> ) [<comment>]
+static std::optional<IrcCommand> TryParseKick(RawIrcCommand const& raw)
+{
+    if (!raw.cmd.starts_with("KICK"))
+        return std::nullopt;
+    IrcCommand::KickCmd cmd = {};
+    std::vector<std::string> tokens = splitToTokens(raw.cmd, ':');
+    if (tokens.size() > 1)
+        cmd.reason = tokens[1];
+    tokens = splitToTokens(tokens[0], ' ');
+    if (tokens.size() < 3)
+        return std::nullopt;
+    cmd.targets = splitToTokens(tokens[2], ',');
+    if (cmd.targets.empty())
+        return std::nullopt;
+    cmd.channel = tokens[1];
+    return IrcCommand(cmd);
+}
 
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int clientFd)
 {
@@ -321,6 +339,14 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         if (cmd.has_value())
         {
             cmd.value().payload.part.client = clientFd;
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParseKick(raw);
+        if (cmd.has_value())
+        {
+            cmd.value().payload.kick.client = clientFd;
             return cmd;
         }
     }
