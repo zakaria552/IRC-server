@@ -12,6 +12,7 @@
 #include <cerrno>
 #include <charconv>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <cstring>
 #include <string>
@@ -162,6 +163,9 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
             case IrcCommand::PART:
                 HandlePartCmd(cmds.front().payload.part);
                 break;
+            case IrcCommand::KICK:
+                HandleKickCmd(cmds.front().payload.kick);
+                break;
         }
         cmds.pop();
     }
@@ -290,8 +294,10 @@ void IrcServer::HandleInviteCmd(const IrcCommand::InviteCmd &cmd)
     }
     std::string src = ":" + client.getNick();
     std::string body = src + " INVITE " + cmd.nick + " :#" + cmd.channel + "\r\n";
-    channel->invite(cmd.nick);
+    channel->invite(recipient->getSocket());
     msgBroker.enqueue({recipient->getSocket(), body});
+    if (channel->isBlackListed(recipient->getSocket()))
+        channel->removeFromBlacklist(recipient->getSocket());
 }
 
 void IrcServer::HandleModeCmd(const IrcCommand::ModeCmd &cmd)
@@ -428,7 +434,12 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
         Channel *channel = channels.getChannel(channelName);
         if (channel && channel->isMember(cmd.client))
             continue;
-        if (channel && channel->modeIsSet(Channel::Mode::INVITE_ONLY) && !channel->isInvited(client.getNick()))
+        if (channel && channel->isBlackListed(cmd.client))
+        {
+            msgBroker.enqueue(NumericReplies::bannedFromChannel(channelName, client));
+            continue;
+        }
+        if (channel && channel->modeIsSet(Channel::Mode::INVITE_ONLY) && !channel->isInvited(cmd.client))
         {
             msgBroker.enqueue(NumericReplies::isInviteOnly(channelName, client));
             continue;
@@ -445,10 +456,8 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
         }
         if (!channel)
             channel = channels.newChannel(channelName);
-        else if (channel->isBlackListed(cmd.client))
-            continue; // [TODO] handle
         if (channel->modeIsSet(Channel::INVITE_ONLY))
-            channel->removeInvite(client.getNick());
+            channel->removeInvite(cmd.client);
         channel->addClient(cmd.client);
         channels.broadcastJoinedUser(client, channelName);
         sendListOfUsers(client, channel);
@@ -458,23 +467,23 @@ void IrcServer::HandleJoinCmd(const IrcCommand::JoinCmd &cmd)
 
 void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
 {
-    Client *client = getClientByNick(cmd.nickname);
-    if (client)
+    bool nickInUse = (getClientByNick(cmd.nickname) != nullptr);
+    Client &client = clients[cmd.client];
+    if (nickInUse)
     {
-        msgBroker.enqueue(NumericReplies::nickInUse(cmd.nickname, clients[cmd.client]));
+        msgBroker.enqueue(NumericReplies::nickInUse(cmd.nickname, client));
         Logger::debug("Duplicate name");
         return;
     }
-    else
+    std::string body = ":" + client.getNick() + " NICK " + cmd.nickname + "\r\n";
+    client.setNick(cmd.nickname);
+    client.updateHandshakeState(Client::Handshake::RECEIVED_NICK);
+    if (!client.isAuthenticated() && client.readyToAuthenticate())
+        authenticate(client);
+    msgBroker.enqueue({cmd.client, body});
+    for(int fd: channels.getSharedChannelClients(cmd.client))
     {
-        Logger::debug("Setting new nick");
-        client = &clients[cmd.client];
-    }
-    client->setNick(cmd.nickname);
-    client->updateHandshakeState(Client::Handshake::RECEIVED_NICK);
-    if (!client->isAuthenticated() && client->readyToAuthenticate())
-    {
-        authenticate(*client);
+        msgBroker.enqueue({fd, body});
     }
 }
 
@@ -592,6 +601,55 @@ void IrcServer::HandlePartCmd(const IrcCommand::PartCmd &cmd)
             channels.broadcastModeChange(clientToPromote, channelName, strModes);
             channel->updateOperators(clientToPromote.getSocket(), true);
         }
+    }
+}
+
+void IrcServer::HandleKickCmd(const IrcCommand::KickCmd &cmd)
+{
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated())
+        return;
+    std::string channelName = cmd.channel.substr(1);
+    Channel *channel = channels.getChannel(channelName);
+    if (!channel)
+    {
+        msgBroker.enqueue(NumericReplies::channelNotFound(channelName, client));
+        return;
+    }
+    if (!channel->isMember(cmd.client))
+    {
+        msgBroker.enqueue(NumericReplies::notChannelMember(channelName, client));
+        return;
+    }
+    if (!channel->isOperator(cmd.client))
+    {
+        msgBroker.enqueue(NumericReplies::isNotOperator(channelName, client));
+        return;
+    }
+    for(const std::string &nick: cmd.targets)
+    {
+        Client *target = getClientByNick(nick);
+        if (!channel->isMember(cmd.client))
+        {
+            msgBroker.enqueue(NumericReplies::notChannelMember(channelName, client));
+            return;
+        }
+        if (!target || (target->getSocket() == cmd.client))
+        {
+            msgBroker.enqueue(NumericReplies::noSuchUser(client, nick));
+            return;
+        }
+        MessageBroker::BroadcastMessage broadcast;
+        broadcast.msg = ":" + client.prefix() + " KICK #" + channelName + " " + nick;
+        if (!cmd.reason.empty())
+            broadcast.msg += " :" + cmd.reason;
+        broadcast.msg += "\r\n";
+        broadcast.clientFds = channel->getClients();
+        msgBroker.enqueue(broadcast);
+        Logger::debug(broadcast.msg);
+        channel = channels.leaveChannel(channelName, target->getSocket());
+        if (channel)
+            channel->blacklist(target->getSocket());
     }
 }
 

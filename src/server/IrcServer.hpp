@@ -48,6 +48,7 @@ private:
     void HandlePingCmd(const IrcCommand::PingCmd &cmd);
     void HandleTopicCmd(const IrcCommand::TopicCmd &cmd);
     void HandlePartCmd(const IrcCommand::PartCmd &cmd);
+    void HandleKickCmd(const IrcCommand::KickCmd &cmd);
     void sendListOfUsers(const Client &client, Channel *channel);
     Client *getClientByNick(const std::string &nick);
 };
