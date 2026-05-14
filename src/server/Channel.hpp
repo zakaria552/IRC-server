@@ -2,9 +2,6 @@
 #include "server/Client.hpp"
 #include <cstdint>
 #include <set>
-#include <string>
-#include <unordered_map>
-#include <vector>
 #include "server/MessageBroker.hpp"
 
 class Channel
@@ -25,10 +22,10 @@ private:
     std::string topicSetter;
     std::string topicTime;
     std::string key = {};
-    std::vector<int> clients = {};
+    std::set<int> clients = {};
     std::set<int> blackList = {};
     std::set<int> inviteList = {};
-    std::unordered_map<int, bool> operators = {};
+    std::set<int> operators = {};
     uint8_t modes = INVITE_ONLY; // unspecified for now
     [[maybe_unused]] unsigned int maxUsers;
 public:
@@ -49,9 +46,10 @@ public:
     void removeInvite(int clientFd);
     void addClient(int clientId);
     void removeClient(int clientId);
+    void kickClient(int clientId);
     MessageBroker::BroadcastMessage constructMessage(const Client &sender, const std::string &msg, bool onlyOperators = false);
     uint8_t getModes();
-    const std::vector<int> &getClients() const ;
+    const std::set<int> &getClients() const ;
     bool modeIsSet(Mode mode) const;
     void setMode(Mode mode);
     void unsetMode(Mode mode);

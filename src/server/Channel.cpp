@@ -55,18 +55,22 @@ bool Channel::isValidKey(const std::string &key)
 
 void Channel::addClient(int clientId)
 {
-    operators[clientId] = (clients.size() == 0);
-    clients.push_back(clientId);
+    clients.insert(clientId);
+    if (operators.size() == 0)
+        operators.insert(clientId);
 }
 
 void Channel::removeClient(int clientId)
 {
-    auto it = std::find(clients.begin(), clients.end(), clientId);
-    if (it != clients.end())
-    {
-        clients.erase(it);
-        operators[clientId] = false;
-    }
+    clients.erase(clientId);
+    operators.erase(clientId);
+    blackList.erase(clientId);
+}
+
+void Channel::kickClient(int clientId)
+{
+    clients.erase(clientId);
+    operators.erase(clientId);
 }
 
 MessageBroker::BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg, bool onlyOperators)
@@ -79,7 +83,7 @@ MessageBroker::BroadcastMessage Channel::constructMessage(const Client &sender, 
     {
         if (client == sender.getSocket() || (onlyOperators && !this->isOperator(client)))
             continue;
-        msgQueue.clientFds.push_back(client);
+        msgQueue.clientFds.insert(client);
         Logger::debug("Sent message to client: " + std::to_string(client) + " , " + body);
     }
     return msgQueue;
@@ -160,19 +164,22 @@ bool Channel::hasTopic() const
     return !topic.empty();
 }
 
-const std::vector<int> &Channel::getClients() const
+const std::set<int> &Channel::getClients() const
 {
     return clients;
 }
 
 void Channel::updateOperators(int clientFd, bool isOperator)
 {
-    operators[clientFd] = isOperator;
+    if (isOperator)
+        operators.insert(clientFd);
+    else
+        operators.erase(clientFd);
 }
 
 bool Channel::isOperator(int clientFd)
 {
-    return operators[clientFd];
+    return (operators.find(clientFd) != operators.end());
 }
 
 std::string Channel::listModes() const
@@ -223,5 +230,5 @@ bool Channel::hasOperator()
 
 int Channel::getOldestClient()
 {
-    return clients[0];
+    return *clients.begin();
 }
