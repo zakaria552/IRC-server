@@ -23,5 +23,5 @@ public:
     Channel *getChannel(const std::string &channel);
     Channel *newChannel(const std::string &channel);
     void leaveAll(int clientFd);
-    void leaveChannel(const std::string &channel, int clientFd);
+    Channel *leaveChannel(const std::string &channel, int clientFd);
 };
