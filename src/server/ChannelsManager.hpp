@@ -1,4 +1,5 @@
 #pragma once
+#include <set>
 #include <string>
 #include <unordered_map>
 #include "Channel.hpp"
@@ -24,4 +25,5 @@ public:
     Channel *newChannel(const std::string &channel);
     void leaveAll(int clientFd);
     Channel *leaveChannel(const std::string &channel, int clientFd);
+    std::set<int> getSharedChannelClients(int clientFd);
 };

@@ -128,3 +128,20 @@ Channel *ChannelsManager::leaveChannel(const std::string &channel, int clientFd)
     }
     return &channels[channel];
 }
+
+std::set<int> ChannelsManager::getSharedChannelClients(int clientFd)
+{
+    std::set<int> clients;
+
+    for(auto &[channelName, channel]: channels)
+    {
+        if (!channel.isMember(clientFd))
+            continue;
+        for(int fd: channel.getClients())
+        {
+            if (fd != clientFd)
+                clients.insert(fd);
+        }
+    }
+    return clients;
+}
