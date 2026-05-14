@@ -592,7 +592,6 @@ void IrcServer::HandlePartCmd(const IrcCommand::PartCmd &cmd)
         broadcast.msg += "\r\n";
         broadcast.clientFds = channel->getClients();
         msgBroker.enqueue(broadcast);
-        Logger::debug(broadcast.msg);
         channel = channels.leaveChannel(channelName, cmd.client);
         if (channel && !channel->hasOperator())
         {
@@ -632,12 +631,12 @@ void IrcServer::HandleKickCmd(const IrcCommand::KickCmd &cmd)
         if (!channel->isMember(cmd.client))
         {
             msgBroker.enqueue(NumericReplies::notChannelMember(channelName, client));
-            return;
+            continue;
         }
         if (!target || (target->getSocket() == cmd.client))
         {
             msgBroker.enqueue(NumericReplies::noSuchUser(client, nick));
-            return;
+            continue;
         }
         MessageBroker::BroadcastMessage broadcast;
         broadcast.msg = ":" + client.prefix() + " KICK #" + channelName + " " + nick;
@@ -646,10 +645,7 @@ void IrcServer::HandleKickCmd(const IrcCommand::KickCmd &cmd)
         broadcast.msg += "\r\n";
         broadcast.clientFds = channel->getClients();
         msgBroker.enqueue(broadcast);
-        Logger::debug(broadcast.msg);
-        channel = channels.leaveChannel(channelName, target->getSocket());
-        if (channel)
-            channel->blacklist(target->getSocket());
+        channel->kickClient(target->getSocket());
     }
 }
 
@@ -657,11 +653,11 @@ void IrcServer::sendListOfUsers(const Client &client, Channel *channel)
 {
     MessageBroker::Message message; //"<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
     const std::string body = ":" + serverName + " 353 " + client.prefix() + " =" + " #" + channel->getName() + " :";
-    const std::vector<int> users = channel->getClients();
+    const std::set<int> users = channel->getClients();
     message.clientFd = client.getSocket();
-    for(size_t i = 0; i < users.size(); i++)
+    for(int clientFd: users)
     {
-        Client &member = clients[users[i]];
+        Client &member = clients[clientFd];
         std::string opPrefix = channel->isOperator(member.getSocket()) ? "@" : "";
         message.msg = body + opPrefix + member.prefix() + "\r\n";
         msgBroker.enqueue(message);
