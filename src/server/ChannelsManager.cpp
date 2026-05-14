@@ -115,6 +115,11 @@ void ChannelsManager::leaveAll(int clientFd)
     }
 }
 
+void ChannelsManager::removeChannel(const std::string &channel)
+{
+    channels.erase(channel);
+}
+
 Channel *ChannelsManager::leaveChannel(const std::string &channel, int clientFd)
 {
     if (channels.find(channel) != channels.end() && channels[channel].isMember(clientFd))

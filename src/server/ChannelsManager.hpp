@@ -25,5 +25,6 @@ public:
     Channel *newChannel(const std::string &channel);
     void leaveAll(int clientFd);
     Channel *leaveChannel(const std::string &channel, int clientFd);
+    void removeChannel(const std::string &channel);
     std::set<int> getSharedChannelClients(int clientFd);
 };
