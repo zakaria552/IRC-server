@@ -19,6 +19,7 @@ public:
     static MessageBroker::Message notChannelMember(const std::string &channel, const Client &client);
     static MessageBroker::Message isChannelMember(const std::string &channel, const Client &sender, const Client &receiver);
     static MessageBroker::Message isInviteOnly(const std::string &channel, const Client &client);
+    static MessageBroker::Message bannedFromChannel(const std::string &channel, const Client &client);
     static MessageBroker::Message invalidChannelKey(const std::string &channel, const Client &client);
     static MessageBroker::Message nickInUse(const std::string &nick, const Client &client);
 //    static Message invalidModeParam(const std::string &channel, const Client &client);

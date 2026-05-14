@@ -28,6 +28,11 @@ MessageBroker::Message NumericReplies::notChannelMember(const std::string &chann
     return {client.getSocket(), NumericReplies::makeBody(442, client.getNick(), channel, "You're not on that channel")};
 }
 
+MessageBroker::Message NumericReplies::bannedFromChannel(const std::string &channel, const Client &client)
+{
+    return {client.getSocket(), NumericReplies::makeBody(474, client.getNick(), channel, "You're banned from channel")};
+}
+
 MessageBroker::Message NumericReplies::isChannelMember(const std::string &channel, const Client &sender, const Client &receiver)
 {
     return {sender.getSocket(), NumericReplies::makeBody(443, sender.getNick() + " " + receiver.getNick(), channel, "is already on channel")};
