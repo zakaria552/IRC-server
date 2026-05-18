@@ -1,8 +1,10 @@
 #include "Client.hpp"
 #include "utils/Logger.hpp"
 #include <cstdint>
+#include <string>
 
-Client::Client(int socket, const std::string &ipAddress): socket(socket), ip(ipAddress)
+Client::Client(int socket, uint32_t ipAddress)
+    : socket(socket), ip(ipAddress)
 {
 };
 
@@ -31,7 +33,7 @@ int Client::getSocket() const
     return socket;
 };
 
-const std::string &Client::getIpAddress() const
+uint32_t Client::getIpAddress() const
 {
     return ip;
 }
@@ -59,7 +61,9 @@ void Client::setFullname(const std::string &name)
 
 std::string Client::info() const
 {
-    return std::to_string(socket) + "," + nickname + "," + ip;
+    unsigned char const* ipBytePtr = reinterpret_cast<unsigned char const*>(&ip);
+    std::string ipString = std::to_string(ipBytePtr[0]) + "." + std::to_string(ipBytePtr[1]) + "." + std::to_string(ipBytePtr[2]) + "." + std::to_string(ipBytePtr[3]);
+    return std::to_string(socket) + "," + nickname + "," + ipString;
 }
 
 void Client::updateHandshakeState(Handshake state)

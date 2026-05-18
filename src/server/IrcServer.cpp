@@ -94,27 +94,24 @@ void IrcServer::start()
 
 void IrcServer::newClient()
 {
-    sockaddr clientAddr;
+    struct sockaddr clientAddr;
     pollfd newPoll = {};
     socklen_t addrLen = sizeof(clientAddr);
-    char ipstr[INET_ADDRSTRLEN];
     int clientFd;
     if ((clientFd = accept(socketFd, &clientAddr, &addrLen)) < 0)
     {
         Logger::warning("Failed to accept client: " + std::string(std::strerror(errno)));
         return;
     }
-    if (inet_ntop(clientAddr.sa_family, &clientAddr, ipstr, sizeof(ipstr)) == NULL)
-    {
-        Logger::warning("Failed retrieve client's IP address: " + std::string(std::strerror(errno)));
-        close(clientFd);
-        return;
-    }
-    clients[clientFd] = Client(clientFd, ipstr);
+
+    unsigned char* ipBytePtr = reinterpret_cast<unsigned char*>(&((sockaddr_in*)&clientAddr)->sin_addr.s_addr);
+    std::string ipString = std::to_string(ipBytePtr[0]) + "." + std::to_string(ipBytePtr[1]) + "." + std::to_string(ipBytePtr[2]) + "." + std::to_string(ipBytePtr[3]);
+    clients[clientFd] = Client(clientFd, ((sockaddr_in*)&clientAddr)->sin_addr.s_addr);
     newPoll.fd = clientFd;
     newPoll.events = POLLIN;
     ioEvents.add(newPoll);
-    Logger::info("New client from: " + clients[clientFd].getIpAddress());
+
+    Logger::info("New client from: " + ipString);
 }
 
 void IrcServer::processRequest(int clientFd, const char *body, const size_t length)

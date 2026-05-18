@@ -16,7 +16,7 @@ public:
     };
 private:
     int socket;
-    std::string ip;
+    uint32_t ip; // Big-Endian
     std::string password;
     std::string nickname;
     std::string username;
@@ -26,14 +26,14 @@ private:
     uint8_t handshakeState = RECEIVED_NONE;
 public:
     Client() =  default;
-    Client(int socket, const std::string &ipAddress);
+    Client(int socket, uint32_t ipAddress);
     ~Client() = default;
     const std::string &getNick() const;
     const std::string &getPass() const;
     const std::string &getUsername() const;
     const std::string &getFullname() const;
     int getSocket() const;
-    const std::string &getIpAddress() const;
+    uint32_t getIpAddress() const;
     void setNick(const std::string &nick);
     void setPass(const std::string &pass);
     void setUsername(const std::string &username);
