@@ -18,5 +18,5 @@ target("ircserv")
 		set_strip("all")
 		set_optimize("fastest")
 		add_defines("LOG_FORMAT=6")
-		add_defines("LOG_LEVEL=2")
+		add_defines("LOG_LEVEL=3")
 	end
