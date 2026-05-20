@@ -1,5 +1,4 @@
 #include "parser/RawCommandParser.hpp"
-#include "utils/Logger.hpp"
 
 RawIrcCommands RawCommandParser::parse(const int &clientFd, const char *body, const int &length)
 {
@@ -19,11 +18,8 @@ void RawCommandParser::updateCommands(const int &clientFd, const char *body, con
 {
     std::string sbody = std::string(body, length);
     buffers[clientFd].push(sbody);
-    if (!sbody.find("\r\n"))
-    {
-        Logger::info("Waiting for more data");
+    if (sbody.find("\r\n") == std::string::npos)
         return;
-    }
     std::string msg;
     while (!buffers[clientFd].empty())
     {

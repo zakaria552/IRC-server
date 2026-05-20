@@ -1,9 +1,9 @@
 #pragma once
 #include <netdb.h>
-#include <queue>
 #include <string>
 #include <sys/poll.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include "IOEventPoller.hpp"
 #include "parser/RawCommandParser.hpp"
 #include <unistd.h>
@@ -11,7 +11,7 @@
 #include "commands/IrcCommand.hpp"
 #include "server/ChannelsManager.hpp"
 #include "server/Client.hpp"
-#include "server/QueueMessages.hpp"
+#include "server/MessageBroker.hpp"
 
 using Clients = std::unordered_map<int, Client>;
 #define DEFAULT_BACKLOG 10
@@ -24,8 +24,7 @@ class IrcServer
     IOEventPoller ioEvents;
     RawCommandParser parser;
     Clients clients;
-    std::queue<Message> queueMessages;
-    std::queue<BroadcastMessage> queueBroadcastMessages;
+    MessageBroker msgBroker;
     ChannelsManager channels;
 public:
     IrcServer() = delete;
@@ -37,8 +36,7 @@ private:
     void clientDisconnected(int clientFd);
     void processRequest(int clientFd, const char *body, const size_t length);
     std::queue<IrcCommand> translateRawCommands(RawIrcCommands& raws, int clientFd);
-    void flushMsgQueues();
-    bool authenticate(const Client &client);
+    void authenticate(Client &client);
     void HandlePrivMsgCmd(const IrcCommand::PrivMsgCmd &cmd);
     void HandleUserCmd(const IrcCommand::UserCmd &cmd);
     void HandleInviteCmd(const IrcCommand::InviteCmd &cmd);
@@ -49,6 +47,8 @@ private:
     void HandleCapCmd(const IrcCommand::CapCmd &cmd);
     void HandlePingCmd(const IrcCommand::PingCmd &cmd);
     void HandleTopicCmd(const IrcCommand::TopicCmd &cmd);
+    void HandlePartCmd(const IrcCommand::PartCmd &cmd);
+    void HandleKickCmd(const IrcCommand::KickCmd &cmd);
     void sendListOfUsers(const Client &client, Channel *channel);
     Client *getClientByNick(const std::string &nick);
 };

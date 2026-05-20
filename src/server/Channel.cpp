@@ -1,6 +1,6 @@
 #include "Channel.hpp"
 #include "server/Client.hpp"
-#include "server/QueueMessages.hpp"
+#include "server/MessageBroker.hpp"
 #include "utils/Logger.hpp"
 #include <algorithm>
 #include <string>
@@ -8,14 +8,24 @@
 
 Channel::Channel(const std::string &name) : name(name){};
 
-bool Channel::isBlackListed(int clientId)
+bool Channel::isBlackListed(int clientFd)
 {
-    return std::find(blackList.begin(), blackList.end(), clientId) != blackList.end();
+    return std::find(blackList.begin(), blackList.end(), clientFd) != blackList.end();
 }
 
-bool Channel::isMember(int clientId)
+void Channel::blacklist(int clientFd)
 {
-    return std::find(clients.begin(), clients.end(), clientId) != clients.end();
+    blackList.insert(clientFd);
+}
+
+void Channel::removeFromBlacklist(int clientFd)
+{
+    blackList.erase(clientFd);
+}
+
+bool Channel::isMember(int clientFd)
+{
+    return std::find(clients.begin(), clients.end(), clientFd) != clients.end();
 }
 
 void Channel::setTopic(const std::string &topic)
@@ -45,22 +55,36 @@ bool Channel::isValidKey(const std::string &key)
 
 void Channel::addClient(int clientId)
 {
-    operators[clientId] = (clients.size() == 0);
-    clients.push_back(clientId);
+    clients.insert(clientId);
+    if (operators.size() == 0)
+        operators.insert(clientId);
 }
 
-BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg)
+void Channel::removeClient(int clientId)
 {
-    BroadcastMessage msgQueue;
+    clients.erase(clientId);
+    operators.erase(clientId);
+    blackList.erase(clientId);
+}
+
+void Channel::kickClient(int clientId)
+{
+    clients.erase(clientId);
+    operators.erase(clientId);
+}
+
+MessageBroker::BroadcastMessage Channel::constructMessage(const Client &sender, const std::string &msg, bool onlyOperators)
+{
+    MessageBroker::BroadcastMessage msgQueue;
     std::string src = ":" + sender.getNick();
     std::string body = src + " PRIVMSG #" + name + " :" + msg + "\r\n";
     msgQueue.msg = body;
     for(auto client: clients)
     {
-        if (client == sender.getSocket())
+        if (client == sender.getSocket() || (onlyOperators && !this->isOperator(client)))
             continue;
-        msgQueue.clientFds.push_back(client);
-        Logger::info("Sent message to client: " + std::to_string(client) + " , " + body);
+        msgQueue.clientFds.insert(client);
+        Logger::debug("Sent message to client: " + std::to_string(client) + " , " + body);
     }
     return msgQueue;
 }
@@ -89,22 +113,21 @@ uint8_t Channel::getModes()
     return modes;
 }
 
-void Channel::invite(const std::string &user)
+void Channel::invite(int clientFd)
 {
-    inviteList.push_back(user);
+    inviteList.insert(clientFd);
 }
 
-bool Channel::isInvited(const std::string &user)
+bool Channel::isInvited(int clientFd)
 {
-    return std::find(inviteList.begin(), inviteList.end(), user) != inviteList.end();
+    return std::find(inviteList.begin(), inviteList.end(), clientFd) != inviteList.end();
 }
 
-void Channel::removeInvite(const std::string &user)
+void Channel::removeInvite(int clientFd)
 {
-    auto it = std::find(inviteList.begin(), inviteList.end(), user);
-    if (it != inviteList.end())
-        inviteList.erase(it);
+    inviteList.erase(clientFd);
 }
+
 const std::string &Channel::getTopic() const
 {
     return topic;
@@ -141,19 +164,22 @@ bool Channel::hasTopic() const
     return !topic.empty();
 }
 
-const std::vector<int> &Channel::getClients() const
+const std::set<int> &Channel::getClients() const
 {
     return clients;
 }
 
 void Channel::updateOperators(int clientFd, bool isOperator)
 {
-    operators[clientFd] = isOperator;
+    if (isOperator)
+        operators.insert(clientFd);
+    else
+        operators.erase(clientFd);
 }
 
 bool Channel::isOperator(int clientFd)
 {
-    return operators[clientFd];
+    return (operators.find(clientFd) != operators.end());
 }
 
 std::string Channel::listModes() const
@@ -177,8 +203,32 @@ std::string Channel::listModes() const
     return modes + modeArgs;
 }
 
-
 bool Channel::isFull()
 {
     return modeIsSet(USER_LIMIT) && clients.size() >= maxUsers;
+}
+
+bool Channel::isEmpty()
+{
+    return clients.empty();
+}
+
+int Channel::size() const
+{
+    return clients.size();
+}
+
+bool Channel::hasOperator()
+{
+    for(auto clientFd: clients)
+    {
+        if (isOperator(clientFd))
+            return true;
+    }
+    return false;
+}
+
+int Channel::getOldestClient()
+{
+    return *clients.begin();
 }
