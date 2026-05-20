@@ -11,12 +11,12 @@ target("ircserv")
 		set_symbols("debug")
 		set_optimize("none")
 		add_defines("LOG_FORMAT=6")
-		add_defines("LOG_LEVEL=2")
+		add_defines("LOG_LEVEL=3")
 	end
 	if is_mode("release") then
 		set_symbols("hidden")
 		set_strip("all")
 		set_optimize("fastest")
 		add_defines("LOG_FORMAT=6")
-		add_defines("LOG_LEVEL=2")
+		add_defines("LOG_LEVEL=3")
 	end

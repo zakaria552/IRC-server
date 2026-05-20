@@ -82,3 +82,23 @@ std::string Logger::timestamp()
     oss << std::put_time(&tm, timeFormat.c_str());
     return oss.str();
 }
+
+#include <stdio.h> // REMOVE!
+void DebugPrintString(std::string_view Str, bool HexOnly)
+{
+    if (not HexOnly)
+    {
+        for (auto const& c : Str)
+        {
+            fprintf(stderr, "%c", c);
+        }
+        fprintf(stderr, "\r\n");
+    }
+
+    std::string_view HexString = "0123456789ABCDEF";
+    for (auto const& c : Str)
+    {
+        fprintf(stderr, "%c%c ", HexString[c >> 4], HexString[c & 0b1111]);
+    }
+    fprintf(stderr, "\r\n");
+}

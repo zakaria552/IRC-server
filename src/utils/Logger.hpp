@@ -50,3 +50,5 @@ public:
     static void warning(const std::string &msg);
     static void debug(const std::string &msg);
 };
+
+void DebugPrintString(std::string_view Str, bool HexOnly = true);

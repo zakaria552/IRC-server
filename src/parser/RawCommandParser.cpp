@@ -18,7 +18,7 @@ void RawCommandParser::updateCommands(const int &clientFd, const char *body, con
 {
     std::string sbody = std::string(body, length);
     buffers[clientFd].push(sbody);
-    if (!sbody.find("\r\n"))
+    if (sbody.find("\r\n") == std::string::npos)
         return;
     std::string msg;
     while (!buffers[clientFd].empty())
