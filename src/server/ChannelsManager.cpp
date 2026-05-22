@@ -1,6 +1,7 @@
 #include "ChannelsManager.hpp"
 #include "server/Channel.hpp"
 #include "server/Client.hpp"
+#include "server/IrcServer.hpp"
 #include "server/MessageBroker.hpp"
 #include "utils/Logger.hpp"
 
@@ -98,18 +99,24 @@ Channel *ChannelsManager::getChannel(const std::string &channel)
     return channelExist(channel) ? &channels[channel] : nullptr;
 }
 
-void ChannelsManager::leaveAll(int clientFd)
+void ChannelsManager::leaveAll(const Client &client, const Clients &clients, const std::string &reason)
 {
     for(auto it = channels.begin(); it != channels.end();)
     {
-        if (it->second.isMember(clientFd))
+        if (it->second.isMember(client.getSocket()))
         {
-            it->second.removeClient(clientFd);
+            it->second.removeClient(client.getSocket());
             if (it->second.isEmpty())
             {
                 it = channels.erase(it);
                 continue;
             }
+            MessageBroker::BroadcastMessage broadcast;
+            broadcast.msg = ":" + client.prefix() + " QUIT " + " :Quit: " + reason + "\r\n";
+            broadcast.clientFds = it->second.getClients();
+            msgBroker.enqueue(broadcast);
+            if (!it->second.hasOperator())
+                autoPromoteToOperator(it->second, clients.at(it->second.getOldestClient()));
         }
         it++;
     }
@@ -149,4 +156,12 @@ std::set<int> ChannelsManager::getSharedChannelClients(int clientFd)
         }
     }
     return clients;
+}
+
+
+void ChannelsManager::autoPromoteToOperator(Channel &channel, const Client &client)
+{
+    std::string strModes = "MODE #" + channel.getName() + " +o " + client.getNick();
+    broadcastModeChange(client, channel.getName(), strModes);
+    channel.updateOperators(client.getSocket(), true);
 }
