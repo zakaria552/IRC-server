@@ -33,6 +33,7 @@ struct IrcCommand
     IrcCommand(TopicCmd);
     IrcCommand(PartCmd);
     IrcCommand(KickCmd);
+    IrcCommand(QuitCmd);
 
     IrcCommand(IrcCommand&&) noexcept;
 

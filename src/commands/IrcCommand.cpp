@@ -48,9 +48,11 @@ IrcCommand::~IrcCommand(void)
         case IrcCommand::Type::PART:
             payload.part.~PartCmd();
             break;
-
         case IrcCommand::Type::KICK:
             payload.kick.~KickCmd();
+            break;
+        case IrcCommand::Type::QUIT:
+            payload.quit.~QuitCmd();
             break;
     }
 }
@@ -98,6 +100,9 @@ IrcCommand::IrcCommand(IrcCommand&& other) noexcept
             break;
         case KICK:
             new (&payload.kick) KickCmd(std::move(other.payload.kick));
+            break;
+        case QUIT:
+            new (&payload.quit) QuitCmd(std::move(other.payload.quit));
             break;
     }
 }
@@ -172,6 +177,12 @@ IrcCommand::IrcCommand(KickCmd cmd)
 : type(KICK)
 {
     new (&payload.kick) KickCmd(std::move(cmd));
+}
+
+IrcCommand::IrcCommand(QuitCmd cmd)
+: type(QUIT)
+{
+    new (&payload.quit) QuitCmd(std::move(cmd));
 }
 
 /* CmdPayload definitions. */
