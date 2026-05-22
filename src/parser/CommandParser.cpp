@@ -251,6 +251,19 @@ static std::optional<IrcCommand> TryParseKick(RawIrcCommand const& raw)
     return IrcCommand(cmd);
 }
 
+// QUIT [<reason>]
+static std::optional<IrcCommand> TryParseQuit(RawIrcCommand const& raw)
+{
+    if (!raw.cmd.starts_with("QUIT"))
+        return std::nullopt;
+    IrcCommand::QuitCmd cmd = {};
+    std::vector<std::string> tokens = splitToTokens(raw.cmd, ':');
+    if (tokens.size() < 2)
+        return std::nullopt;
+    cmd.reason = tokens[1];
+    return IrcCommand(cmd);
+}
+
 std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int clientFd)
 {
     Logger::debug(raw.cmd);
@@ -347,6 +360,14 @@ std::optional<IrcCommand> CommandParser::Parse(RawIrcCommand const& raw, int cli
         if (cmd.has_value())
         {
             cmd.value().payload.kick.client = clientFd;
+            return cmd;
+        }
+    }
+    {
+        std::optional<IrcCommand> cmd = TryParseQuit(raw);
+        if (cmd.has_value())
+        {
+            cmd.value().payload.quit.client = clientFd;
             return cmd;
         }
     }
