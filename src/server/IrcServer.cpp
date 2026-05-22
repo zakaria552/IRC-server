@@ -187,6 +187,9 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
             case IrcCommand::KICK:
                 HandleKickCmd(cmds.front().payload.kick);
                 break;
+            case IrcCommand::QUIT:
+                HandleQuitCmd(cmds.front().payload.quit);
+                break;
         }
         cmds.pop();
     }
@@ -195,7 +198,7 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
 void IrcServer::clientDisconnected(int clientFd)
 {
     Logger::info("Client disconnected");
-    channels.leaveAll(clientFd);
+    channels.leaveAll(clients[clientFd], clients, "unknown reason");
     // .erase() was sometimes returning 0 instead of expected 1 element removed.
     if (clients.erase(clientFd) == 0) [[unlikely]]
     {
@@ -623,12 +626,7 @@ void IrcServer::HandlePartCmd(const IrcCommand::PartCmd &cmd)
         msgBroker.enqueue(broadcast);
         channel = channels.leaveChannel(channelName, cmd.client);
         if (channel && !channel->hasOperator())
-        {
-            Client &clientToPromote = clients[channel->getOldestClient()];
-            std::string strModes = "MODE " + chan + " +o " + clientToPromote.getNick();
-            channels.broadcastModeChange(clientToPromote, channelName, strModes);
-            channel->updateOperators(clientToPromote.getSocket(), true);
-        }
+            channels.autoPromoteToOperator(*channel, clients[channel->getOldestClient()]);
     }
 }
 
@@ -676,6 +674,12 @@ void IrcServer::HandleKickCmd(const IrcCommand::KickCmd &cmd)
         msgBroker.enqueue(broadcast);
         channel->kickClient(target->getSocket());
     }
+}
+
+void IrcServer::HandleQuitCmd(const IrcCommand::QuitCmd &cmd)
+{
+    channels.leaveAll(clients[cmd.client], clients, cmd.reason);
+    close(cmd.client);
 }
 
 void IrcServer::sendListOfUsers(const Client &client, Channel *channel)

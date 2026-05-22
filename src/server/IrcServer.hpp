@@ -14,7 +14,6 @@
 #include "server/Client.hpp"
 #include "server/MessageBroker.hpp"
 
-using Clients = std::unordered_map<int, Client>;
 #define DEFAULT_BACKLOG 10
 
 class IrcServer
@@ -53,6 +52,7 @@ private:
     void HandleTopicCmd(const IrcCommand::TopicCmd &cmd);
     void HandlePartCmd(const IrcCommand::PartCmd &cmd);
     void HandleKickCmd(const IrcCommand::KickCmd &cmd);
+    void HandleQuitCmd(const IrcCommand::QuitCmd &cmd);
     void sendListOfUsers(const Client &client, Channel *channel);
     Client *getClientByNick(const std::string &nick);
 };
