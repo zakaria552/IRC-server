@@ -1,6 +1,10 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <unordered_map>
+
+class Client;
+using Clients = std::unordered_map<int, Client>;
 
 class Client
 {
