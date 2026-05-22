@@ -236,14 +236,6 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws, int
 
 void IrcServer::authenticate(Client &client)
 {
-    if (!password.empty() && (client.getPass() != password))
-    {
-        Logger::debug("Failed to authenticate client, booting them off from server");
-        std::string body = NumericReplies::passMisMatch();
-        msgBroker.enqueue({client.getSocket(), body});
-        clientDisconnected(client.getSocket());
-        return;
-    }
     std::string body = NumericReplies::welcome() + client.getNick() + " :Welcome to the Internet Relay Network " + client.getNick() + "\r\n";
     msgBroker.enqueue({client.getSocket(), body});
     client.updateHandshakeState(Client::Handshake::AUTHENTICATED);
@@ -504,6 +496,8 @@ void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
     client.updateHandshakeState(Client::Handshake::RECEIVED_NICK);
     if (!client.isAuthenticated() && client.readyToAuthenticate())
         authenticate(client);
+    if (!client.isAuthenticated())
+        return;
     msgBroker.enqueue({cmd.client, body});
     for(int fd: channels.getSharedChannelClients(cmd.client))
     {
@@ -515,11 +509,17 @@ void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 {
     Client &client = clients[cmd.client];
     client.setPass(cmd.password);
+    if (!password.empty() && (cmd.password != password))
+    {
+        Logger::debug("Failed to authenticate client, booting them off from server");
+        std::string body = NumericReplies::passMisMatch();
+        msgBroker.urgentMsg({client.getSocket(), body});
+        clientDisconnected(client.getSocket());
+        return;
+    }
     client.updateHandshakeState(Client::Handshake::RECEIVED_PASS);
     if (!client.isAuthenticated() && client.readyToAuthenticate())
-    {
         authenticate(client);
-    }
 }
 
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
@@ -679,7 +679,7 @@ void IrcServer::HandleKickCmd(const IrcCommand::KickCmd &cmd)
 void IrcServer::HandleQuitCmd(const IrcCommand::QuitCmd &cmd)
 {
     channels.leaveAll(clients[cmd.client], clients, cmd.reason);
-    close(cmd.client);
+    clientDisconnected(cmd.client);
 }
 
 void IrcServer::sendListOfUsers(const Client &client, Channel *channel)
