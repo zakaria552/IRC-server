@@ -497,8 +497,12 @@ void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
 {
-   Logger::debug("Ignoring capability handshake");
-   clients[cmd.client].updateHandshakeState(Client::Handshake::RECEIVED_CAP);
+    Logger::debug("Ignoring capability handshake");
+    Client &client = clients[cmd.client];
+    if (!client.isAuthenticated() && client.readyToAuthenticate())
+    {
+        authenticate(client);
+    }
 }
 
 void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
