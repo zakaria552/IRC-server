@@ -1,4 +1,5 @@
 #include "IOEventPoller.hpp"
+#include <cerrno>
 #include <stdexcept>
 #include <string>
 #include <sys/poll.h>
@@ -13,7 +14,11 @@ void IOEventPoller::pollEvents()
         newPolls.pop();
     }
     if (poll(polls.data(), polls.size(), -1) < 0)
+    {
+        if (errno == EINTR)
+            return;
         throw std::runtime_error("Poll failed");
+    }
 }
 
 void IOEventPoller::add(const pollfd &newPollfd)

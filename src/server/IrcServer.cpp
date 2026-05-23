@@ -62,6 +62,11 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
     serverName = name;
 }
 
+void IrcServer::setShutdownFlag(std::atomic<bool> *flag)
+{
+    shutdownFlag = flag;
+}
+
 void IrcServer::start()
 {
     Logger::info("Starting sever");
@@ -69,6 +74,8 @@ void IrcServer::start()
         throw std::runtime_error("Failed to listen for connections on the socket" + std::string(strerror(errno)));
     while (!closeConnection)
     {
+        if (shutdownFlag && shutdownFlag->load(std::memory_order_relaxed))
+            break;
         ioEvents.pollEvents();
         for (auto client: ioEvents)
         {
@@ -90,6 +97,23 @@ void IrcServer::start()
         }
         msgBroker.flush();
     }
+}
+
+void IrcServer::shutdown()
+{
+    Logger::info("Shutting down server...");
+    for (auto &[fd, client] : clients)
+    {
+        ::shutdown(fd, SHUT_RDWR);
+        ::close(fd);
+    }
+    clients.clear();
+    if (socketFd >= 0)
+    {
+        ::close(socketFd);
+        socketFd = -1;
+    }
+    Logger::info("Server shutdown complete");
 }
 
 void IrcServer::newClient()

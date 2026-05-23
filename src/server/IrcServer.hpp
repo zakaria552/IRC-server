@@ -8,6 +8,7 @@
 #include "parser/RawCommandParser.hpp"
 #include <unistd.h>
 #include <unordered_map>
+#include <atomic>
 #include "commands/IrcCommand.hpp"
 #include "server/ChannelsManager.hpp"
 #include "server/Client.hpp"
@@ -26,10 +27,13 @@ class IrcServer
     Clients clients;
     MessageBroker msgBroker;
     ChannelsManager channels;
+    std::atomic<bool> *shutdownFlag = nullptr;
 public:
     IrcServer() = delete;
     IrcServer(const std::string &serverName, const char *port, const char *password);
+    void setShutdownFlag(std::atomic<bool> *flag);
     void start();
+    void shutdown();
 private:
     // Translates raw commands containing strings into type-safe commands.
     void newClient();
