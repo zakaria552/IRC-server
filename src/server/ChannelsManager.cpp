@@ -165,3 +165,9 @@ void ChannelsManager::autoPromoteToOperator(Channel &channel, const Client &clie
     broadcastModeChange(client, channel.getName(), strModes);
     channel.updateOperators(client.getSocket(), true);
 }
+
+
+Channels ChannelsManager::getChannels() const
+{
+    return channels;
+}

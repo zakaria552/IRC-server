@@ -29,4 +29,5 @@ public:
     void removeChannel(const std::string &channel);
     std::set<int> getSharedChannelClients(int clientFd);
     void autoPromoteToOperator(Channel &channel, const Client &client);
+    Channels getChannels() const ;
 };
