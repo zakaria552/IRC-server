@@ -521,12 +521,16 @@ void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
 {
-    Logger::debug("Ignoring capability handshake");
+    Logger::debug("Handling capability negotiation");
     Client &client = clients[cmd.client];
+    if (client.getHandshakeState() & Client::Handshake::RECEIVED_CAP)
+        return;
     if (!client.isAuthenticated() && client.readyToAuthenticate())
     {
         authenticate(client);
     }
+    msgBroker.enqueue({cmd.client, ":" + serverName + " CAP * LS\r\n"});
+    client.updateHandshakeState(Client::Handshake::RECEIVED_CAP);
 }
 
 void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
