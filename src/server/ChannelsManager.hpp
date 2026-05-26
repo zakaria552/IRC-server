@@ -2,6 +2,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "Channel.hpp"
 #include "server/Client.hpp"
 #include "server/MessageBroker.hpp"
@@ -30,4 +31,6 @@ public:
     std::set<int> getSharedChannelClients(int clientFd);
     void autoPromoteToOperator(Channel &channel, const Client &client);
     Channels getChannels() const ;
+    std::vector<std::pair<int, std::string>> popularChannels();
+    std::string popularChannelsToStr(unsigned int maxNumOfChannels);
 };

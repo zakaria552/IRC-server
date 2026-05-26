@@ -1,10 +1,10 @@
 #include "ChannelsManager.hpp"
 #include "server/Channel.hpp"
 #include "server/Client.hpp"
-#include "server/IrcServer.hpp"
 #include "server/MessageBroker.hpp"
 #include "utils/Logger.hpp"
-
+#include <unordered_map>
+#include <algorithm>
 
 ChannelsManager::ChannelsManager(MessageBroker &broker)
     : msgBroker(broker)
@@ -170,4 +170,31 @@ void ChannelsManager::autoPromoteToOperator(Channel &channel, const Client &clie
 Channels ChannelsManager::getChannels() const
 {
     return channels;
+}
+
+std::vector<std::pair<int, std::string>> ChannelsManager::popularChannels()
+{
+    std::vector<std::pair<int, std::string>> elems{0};
+    for(auto &[name, channel]: channels)
+        elems.push_back({channel.size(), name});
+    std::sort(elems.begin(), elems.end());
+    return elems;
+}
+
+
+std::string ChannelsManager::popularChannelsToStr(unsigned int maxNumOfChannels)
+{
+    std::string str = "";
+    auto channels = popularChannels();
+    unsigned int appended = 0;
+    if (channels.empty())
+        return str;
+    for(auto it = channels.begin(); it != channels.end() && (appended < maxNumOfChannels); it++)
+    {
+        if (appended != 0)
+            str += ",";
+        str += it->second + "(" + std::to_string(it->first) + ")";
+        appended++;
+    }
+    return str;
 }

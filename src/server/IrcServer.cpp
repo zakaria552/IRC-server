@@ -254,21 +254,7 @@ void IrcServer::authenticate(Client &client)
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Server message: Be polite. No spam. Enjoy your stay\r\n"});
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Online users: " + std::to_string(clients.size()) + "\r\n"});
-    std::string channelNames;
-    int appended = 0;
-    for(auto [name, channel]: channels.getChannels())
-    {
-        if (appended > 10)
-        {
-            channelNames += ",...";
-            break;
-        }
-        if (!channelNames.empty())
-            channelNames.append(",");
-        channelNames.append(name);
-        appended++;
-    }
-    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Channels: " + channelNames + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Channels: " + channels.popularChannelsToStr(10) + "\r\n"});
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
 }
 
