@@ -258,9 +258,8 @@ static std::optional<IrcCommand> TryParseQuit(RawIrcCommand const& raw)
         return std::nullopt;
     IrcCommand::QuitCmd cmd = {};
     std::vector<std::string> tokens = splitToTokens(raw.cmd, ':');
-    if (tokens.size() < 2)
-        return std::nullopt;
-    cmd.reason = tokens[1];
+    if (tokens.size() > 1)
+            cmd.reason = tokens[1];
     return IrcCommand(cmd);
 }
 
