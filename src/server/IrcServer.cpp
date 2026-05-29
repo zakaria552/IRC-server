@@ -62,6 +62,11 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
     serverName = name;
 }
 
+void IrcServer::setShutdownFlag(std::atomic<bool> *flag)
+{
+    shutdownFlag = flag;
+}
+
 void IrcServer::start()
 {
     Logger::info("Starting sever");
@@ -70,6 +75,8 @@ void IrcServer::start()
     while (!closeConnection)
     {
         ioEvents.pollEvents();
+        if (shutdownFlag && shutdownFlag->load(std::memory_order_relaxed))
+            break;
         for (auto client: ioEvents)
         {
             if (not (client.revents & POLLIN))
@@ -90,6 +97,23 @@ void IrcServer::start()
         }
         msgBroker.flush();
     }
+}
+
+void IrcServer::shutdown()
+{
+    Logger::info("Shutting down server...");
+    for (auto &[fd, client] : clients)
+    {
+        ::shutdown(fd, SHUT_RDWR);
+        ::close(fd);
+    }
+    clients.clear();
+    if (socketFd >= 0)
+    {
+        ::close(socketFd);
+        socketFd = -1;
+    }
+    Logger::info("Server shutdown complete");
 }
 
 void IrcServer::newClient()
@@ -497,12 +521,16 @@ void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
 {
-    Logger::debug("Ignoring capability handshake");
+    Logger::debug("Handling capability negotiation");
     Client &client = clients[cmd.client];
+    if (client.getHandshakeState() & Client::Handshake::RECEIVED_CAP)
+        return;
     if (!client.isAuthenticated() && client.readyToAuthenticate())
     {
         authenticate(client);
     }
+    msgBroker.enqueue({cmd.client, ":" + serverName + " CAP * LS\r\n"});
+    client.updateHandshakeState(Client::Handshake::RECEIVED_CAP);
 }
 
 void IrcServer::HandleUserCmd(const IrcCommand::UserCmd &cmd)
