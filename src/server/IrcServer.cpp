@@ -251,7 +251,7 @@ void IrcServer::authenticate(Client &client)
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
     msgBroker.enqueue({client.getSocket(), "002 " + client.getNick() +" :Your host: " + serverName + "\r\n"});
     msgBroker.enqueue({client.getSocket(), "003 " + client.getNick() +" :Created at: " + startTime + "\r\n"});
-    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Server message: Be polite. No spam. Enjoy your stay\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Server message: Be polite, no spam and enjoy your stay\r\n"});
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Online users: " + std::to_string(clients.size()) + "\r\n"});
     msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Channels: " + channels.popularChannelsToStr(10) + "\r\n"});
