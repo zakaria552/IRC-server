@@ -189,7 +189,7 @@ std::string ChannelsManager::popularChannelsToStr(unsigned int maxNumOfChannels)
     unsigned int appended = 0;
     if (channels.empty())
         return str;
-    for(auto it = channels.begin(); it != channels.end() && (appended < maxNumOfChannels); it++)
+    for(auto it = channels.rbegin(); it != channels.rend() && (appended < maxNumOfChannels); it++)
     {
         if (appended != 0)
             str += ",";
