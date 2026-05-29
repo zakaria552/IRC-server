@@ -74,9 +74,9 @@ void IrcServer::start()
         throw std::runtime_error("Failed to listen for connections on the socket" + std::string(strerror(errno)));
     while (!closeConnection)
     {
+        ioEvents.pollEvents();
         if (shutdownFlag && shutdownFlag->load(std::memory_order_relaxed))
             break;
-        ioEvents.pollEvents();
         for (auto client: ioEvents)
         {
             if (not (client.revents & POLLIN))
