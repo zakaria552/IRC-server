@@ -26,7 +26,6 @@ private:
     std::string username;
     std::string fullName;
     std::string host;
-    bool operatorPriv = false;
     uint8_t handshakeState = RECEIVED_NONE;
 public:
     Client() =  default;
