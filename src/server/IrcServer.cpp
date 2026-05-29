@@ -72,6 +72,7 @@ void IrcServer::start()
     Logger::info("Starting sever");
     if (listen(socketFd, DEFAULT_BACKLOG) != 0)
         throw std::runtime_error("Failed to listen for connections on the socket" + std::string(strerror(errno)));
+    setStartupTime();
     while (!closeConnection)
     {
         ioEvents.pollEvents();
@@ -233,12 +234,42 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws, int
 
     return cmds;
 }
-
 void IrcServer::authenticate(Client &client)
 {
-    std::string body = NumericReplies::welcome() + client.getNick() + " :Welcome to the Internet Relay Network " + client.getNick() + "\r\n";
-    msgBroker.enqueue({client.getSocket(), body});
     client.updateHandshakeState(Client::Handshake::AUTHENTICATED);
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :      ███                                            \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ▒▒▒                                             \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ████  ████████   █████████  █████████  █████████\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :    ▒▒███ ▒▒███▒▒███ ▒█▒▒▒▒███  ▒█▒▒▒▒███  ▒█▒▒▒▒███ \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ▒███  ▒███ ▒▒▒  ▒   ███▒   ▒   ███▒   ▒   ███▒  \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ▒███  ▒███        ███▒   █   ███▒   █   ███▒   █\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     █████ █████      █████████  █████████  █████████\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :    ▒▒▒▒▒ ▒▒▒▒▒      ▒▒▒▒▒▒▒▒▒  ▒▒▒▒▒▒▒▒▒  ▒▒▒▒▒▒▒▒▒ \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :                                                     \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
+    msgBroker.enqueue({client.getSocket(), "001 " + client.getNick() +" :Welcome to the server " + client.getNick() + " :)\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
+    msgBroker.enqueue({client.getSocket(), "002 " + client.getNick() +" :Your host: " + serverName + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "003 " + client.getNick() +" :Created at: " + startTime + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Server message: Be polite. No spam. Enjoy your stay\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Online users: " + std::to_string(clients.size()) + "\r\n"});
+    std::string channelNames;
+    int appended = 0;
+    for(auto [name, channel]: channels.getChannels())
+    {
+        if (appended > 10)
+        {
+            channelNames += ",...";
+            break;
+        }
+        if (!channelNames.empty())
+            channelNames.append(",");
+        channelNames.append(name);
+        appended++;
+    }
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Channels: " + channelNames + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
 }
 
 // Handlers
@@ -708,4 +739,14 @@ Client *IrcServer::getClientByNick(const std::string &nick)
             return &client;
     }
     return nullptr;
+}
+
+void IrcServer::setStartupTime()
+{
+    std::time_t now = std::time(NULL);
+    std::tm * ptm = std::localtime(&now);
+    char buffer[32];
+    // Format: Mo, 15.06.2009 20:20:00
+    std::strftime(buffer, 32, "%a, %d.%m.%Y %H:%M:%S", ptm);
+    startTime = buffer;
 }
