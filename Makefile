@@ -6,13 +6,26 @@ DEPS		:= dependencies.d
 CC			:= c++
 INCLUDES	:= "-Isrc"
 CFLAGS		:= -Wall -Wextra -Werror -std=c++20 -MMD -MP $(CF) $(INCLUDES)
+DEBUG_FLAGS := -g -o0 -DLOG_LEVEL=3 -DLOG_FORMAT=6 -fsanitize=address,undefined -fno-omit-frame-pointer
+RELEASE_FLAGS := -o2 -DLOG_LEVEL=2 -DLOG_FORMAT=6
+BUILD 		?= release
+
+ifeq ($(BUILD),debug)
+	CFLAGS += $(DEBUG_FLAGS)
+else
+	CFLAGS += $(RELEASE_FLAGS)
+endif
 
 ## Sources
 DEPS_DIR	:= deps
 OBJ_DIR 	:= obj
 SRC_DIR		:= src
 VPATH		:= $(SRC_DIR) $(SRC_DIR)/server $(SRC_DIR)/utils $(SRC_DIR)/parser
+<<<<<<< HEAD
 SRC			:= src/commands/IrcCommand.cpp src/main.cpp src/parser/CommandParser.cpp src/parser/RawCommandParser.cpp src/server/Channel.cpp src/server/ChannelsManager.cpp src/server/Client.cpp src/server/IOEventPoller.cpp src/server/IrcServer.cpp src/server/MessageBroker.cpp src/server/NumericReplies.cpp src/server/globals.cpp src/utils/iplookup.cpp src/utils/Logger.cpp
+=======
+SRC			:= src/commands/IrcCommand.cpp src/main.cpp src/server/MessageBroker.cpp src/parser/CommandParser.cpp src/parser/RawCommandParser.cpp src/server/Channel.cpp src/server/ChannelsManager.cpp src/server/Client.cpp src/server/IOEventPoller.cpp src/server/IrcServer.cpp src/server/NumericReplies.cpp src/server/globals.cpp src/utils/iplookup.cpp src/utils/Logger.cpp
+>>>>>>> d62df70 (add: debug and release build)
 OBJS 		:= $(SRC:%.cpp=$(OBJ_DIR)/%.o)
 
 #╔════════════════════════════════════════════╗
