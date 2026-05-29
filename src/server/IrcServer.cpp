@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <system_error>
 #include "server/globals.hpp"
+#include <charconv>
 
 IrcServer::IrcServer(const std::string &name, const char *port, const char *password)
     : password(password), msgBroker{}, channels(msgBroker)
@@ -27,6 +28,10 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
     req.ai_family = AF_INET;
     req.ai_flags = AI_PASSIVE;
     Logger::info("Initializing server...");
+    int srvPort;
+    std::from_chars_result convRes = std::from_chars(port, port + std::string_view(port).size(), srvPort);
+    if (convRes.ec == std::errc::invalid_argument || convRes.ec == std::errc::result_out_of_range || srvPort > 65535 || srvPort <= 0)
+        throw std::runtime_error("Invalid port, expected [0, 65535]");
     if (getaddrinfo(nullptr, port, &req, &res) != 0)
         throw std::runtime_error("Failed to retrieve host address information");
     for (p = res; p != nullptr; p = p->ai_next)
@@ -37,7 +42,7 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
         {
             Logger::debug("AF: "+ std::to_string(p->ai_family) +
                         ", sockType: " + std::to_string(p->ai_socktype) +
-                        ", AF_PROTOCAL: " + std::to_string(p->ai_protocol));
+                        ", AF_PROTOCOL: " + std::to_string(p->ai_protocol));
             break;
         }
     }

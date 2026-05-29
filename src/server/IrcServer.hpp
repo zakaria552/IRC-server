@@ -6,8 +6,6 @@
 #include <arpa/inet.h>
 #include "IOEventPoller.hpp"
 #include "parser/RawCommandParser.hpp"
-#include <unistd.h>
-#include <unordered_map>
 #include <atomic>
 #include "commands/IrcCommand.hpp"
 #include "server/ChannelsManager.hpp"
@@ -27,11 +25,8 @@ class IrcServer
     Clients clients;
     MessageBroker msgBroker;
     ChannelsManager channels;
-<<<<<<< HEAD
     std::atomic<bool> *shutdownFlag = nullptr;
-=======
     std::string startTime;
->>>>>>> 30f05e2 (add: improved the welcome message, show number of clients in the server and the channels)
 public:
     IrcServer() = delete;
     IrcServer(const std::string &serverName, const char *port, const char *password);
