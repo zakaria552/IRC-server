@@ -67,6 +67,10 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
     serverName = name;
 }
 
+IrcServer::~IrcServer()
+{
+    shutdown();
+}
 void IrcServer::setShutdownFlag(std::atomic<bool> *flag)
 {
     shutdownFlag = flag;

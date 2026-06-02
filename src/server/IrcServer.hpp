@@ -30,11 +30,12 @@ class IrcServer
 public:
     IrcServer() = delete;
     IrcServer(const std::string &serverName, const char *port, const char *password);
+    ~IrcServer();
     void setShutdownFlag(std::atomic<bool> *flag);
     void start();
-    void shutdown();
 private:
     // Translates raw commands containing strings into type-safe commands.
+    void shutdown();
     void newClient();
     void clientDisconnected(int clientFd);
     void processRequest(int clientFd, const char *body, const size_t length);
