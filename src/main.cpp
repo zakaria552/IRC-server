@@ -31,7 +31,7 @@ int main(int argc, char **args)
     if (argc != 3)
     {
         Logger::error("Missing required arguments: usage ./ircserv port password");
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
     installSignalHandlers();
     try
@@ -39,10 +39,9 @@ int main(int argc, char **args)
         irc::server server(DEFAULT_SERVER_NAME, args[1], args[2]);
         server.setShutdownFlag(&shutdownRequested);
         server.start();
-        server.shutdown();
     } catch(std::exception &err)
     {
         Logger::error(err.what());
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 }
