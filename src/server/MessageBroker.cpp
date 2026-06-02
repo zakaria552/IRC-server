@@ -88,3 +88,12 @@ void MessageBroker::retryFailedMessages()
         return retry.message.clientFds.empty() || (retry.attempts == MAX_RETRY_ATTEMPT);
     });
 }
+
+void MessageBroker::urgentMsg(const Message &msg)
+{
+    if (send(msg.clientFd, msg.msg.c_str(), msg.msg.length(), MSG_DONTWAIT | MSG_NOSIGNAL) == -1)
+    {
+        Logger::error("Failed to send urgent message: " + std::string(std::strerror(errno)));
+        retries.push_back({msg});
+    }
+}

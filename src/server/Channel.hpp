@@ -26,7 +26,7 @@ private:
     std::set<int> blackList = {};
     std::set<int> inviteList = {};
     std::set<int> operators = {};
-    uint8_t modes = INVITE_ONLY; // unspecified for now
+    uint8_t modes = NONE;
     [[maybe_unused]] unsigned int maxUsers;
 public:
     Channel() = default;

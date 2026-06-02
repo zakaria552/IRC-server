@@ -3,7 +3,8 @@
 #include "server/Client.hpp"
 #include "server/MessageBroker.hpp"
 #include "utils/Logger.hpp"
-
+#include <unordered_map>
+#include <algorithm>
 
 ChannelsManager::ChannelsManager(MessageBroker &broker)
     : msgBroker(broker)
@@ -98,18 +99,24 @@ Channel *ChannelsManager::getChannel(const std::string &channel)
     return channelExist(channel) ? &channels[channel] : nullptr;
 }
 
-void ChannelsManager::leaveAll(int clientFd)
+void ChannelsManager::leaveAll(const Client &client, const Clients &clients, const std::string &reason)
 {
     for(auto it = channels.begin(); it != channels.end();)
     {
-        if (it->second.isMember(clientFd))
+        if (it->second.isMember(client.getSocket()))
         {
-            it->second.removeClient(clientFd);
+            it->second.removeClient(client.getSocket());
             if (it->second.isEmpty())
             {
                 it = channels.erase(it);
                 continue;
             }
+            MessageBroker::BroadcastMessage broadcast;
+            broadcast.msg = ":" + client.prefix() + " QUIT " + " :Quit: " + reason + "\r\n";
+            broadcast.clientFds = it->second.getClients();
+            msgBroker.enqueue(broadcast);
+            if (!it->second.hasOperator())
+                autoPromoteToOperator(it->second, clients.at(it->second.getOldestClient()));
         }
         it++;
     }
@@ -149,4 +156,45 @@ std::set<int> ChannelsManager::getSharedChannelClients(int clientFd)
         }
     }
     return clients;
+}
+
+
+void ChannelsManager::autoPromoteToOperator(Channel &channel, const Client &client)
+{
+    std::string strModes = "MODE #" + channel.getName() + " +o " + client.getNick();
+    broadcastModeChange(client, channel.getName(), strModes);
+    channel.updateOperators(client.getSocket(), true);
+}
+
+
+Channels ChannelsManager::getChannels() const
+{
+    return channels;
+}
+
+std::vector<std::pair<int, std::string>> ChannelsManager::popularChannels()
+{
+    std::vector<std::pair<int, std::string>> elems{0};
+    for(auto &[name, channel]: channels)
+        elems.push_back({channel.size(), name});
+    std::sort(elems.begin(), elems.end());
+    return elems;
+}
+
+
+std::string ChannelsManager::popularChannelsToStr(unsigned int maxNumOfChannels)
+{
+    std::string str = "";
+    auto channels = popularChannels();
+    unsigned int appended = 0;
+    if (channels.empty())
+        return str;
+    for(auto it = channels.rbegin(); it != channels.rend() && (appended < maxNumOfChannels); it++)
+    {
+        if (appended != 0)
+            str += ",";
+        str += it->second + "(" + std::to_string(it->first) + ")";
+        appended++;
+    }
+    return str;
 }

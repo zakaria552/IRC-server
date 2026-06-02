@@ -3,20 +3,22 @@
 #include <chrono>
 #include <iomanip>
 #include <iostream>
+#include <ostream>
 #include <string>
 
 void Logger::log(const std::string &msg, const Level &level)
 {
+    auto &out = (level == ERROR) ? std::cerr : std::cout;
     if (level > this->level)
         return;
     std::string timestamp = this->timestamp();
     if (!timestamp.empty())
-        std::cout << "[" << timestamp << "]";
+        out << "[" << timestamp << "]";
     if (format & Format::LOGGING_LEVEL || format & Format::DEFAULT)
-        std::cout << "[" << getLevel(level) << "]";
+        out << "[" << getLevel(level) << "]";
     if (format != Format::NONE)
-        std::cout << " - " ;
-    std::cout << msg << std::endl;
+        out << " - " ;
+    out << msg << std::endl;
 }
 
 void Logger::info(const std::string &msg)

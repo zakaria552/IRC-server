@@ -15,7 +15,8 @@ enum Type
     MODE,
     TOPIC,
     PART,
-    KICK
+    KICK,
+    QUIT
 };
 
 struct BaseCmd
@@ -94,6 +95,11 @@ struct PartCmd : public BaseCmd
     std::string reason;
 };
 
+struct QuitCmd : public BaseCmd
+{
+    std::string reason;
+};
+
 struct KickCmd: public BaseCmd
 {
     std::vector<std::string> targets;
@@ -115,6 +121,7 @@ union CmdPayload
     TopicCmd topic;
     PartCmd part;
     KickCmd kick;
+    QuitCmd quit;
 
     CmdPayload();
     ~CmdPayload();

@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <system_error>
 #include "server/globals.hpp"
+#include <charconv>
 
 IrcServer::IrcServer(const std::string &name, const char *port, const char *password)
     : password(password), msgBroker{}, channels(msgBroker)
@@ -27,6 +28,10 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
     req.ai_family = AF_INET;
     req.ai_flags = AI_PASSIVE;
     Logger::info("Initializing server...");
+    int srvPort;
+    std::from_chars_result convRes = std::from_chars(port, port + std::string_view(port).size(), srvPort);
+    if (convRes.ec == std::errc::invalid_argument || convRes.ec == std::errc::result_out_of_range || srvPort > 65535 || srvPort <= 0)
+        throw std::runtime_error("Invalid port, expected [0, 65535]");
     if (getaddrinfo(nullptr, port, &req, &res) != 0)
         throw std::runtime_error("Failed to retrieve host address information");
     for (p = res; p != nullptr; p = p->ai_next)
@@ -37,7 +42,7 @@ IrcServer::IrcServer(const std::string &name, const char *port, const char *pass
         {
             Logger::debug("AF: "+ std::to_string(p->ai_family) +
                         ", sockType: " + std::to_string(p->ai_socktype) +
-                        ", AF_PROTOCAL: " + std::to_string(p->ai_protocol));
+                        ", AF_PROTOCOL: " + std::to_string(p->ai_protocol));
             break;
         }
     }
@@ -72,6 +77,7 @@ void IrcServer::start()
     Logger::info("Starting sever");
     if (listen(socketFd, DEFAULT_BACKLOG) != 0)
         throw std::runtime_error("Failed to listen for connections on the socket" + std::string(strerror(errno)));
+    setStartupTime();
     while (!closeConnection)
     {
         ioEvents.pollEvents();
@@ -187,6 +193,9 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
             case IrcCommand::KICK:
                 HandleKickCmd(cmds.front().payload.kick);
                 break;
+            case IrcCommand::QUIT:
+                HandleQuitCmd(cmds.front().payload.quit);
+                break;
         }
         cmds.pop();
     }
@@ -195,7 +204,7 @@ void IrcServer::processRequest(int clientFd, const char *body, const size_t leng
 void IrcServer::clientDisconnected(int clientFd)
 {
     Logger::info("Client disconnected");
-    channels.leaveAll(clientFd);
+    channels.leaveAll(clients[clientFd], clients, "unknown reason");
     // .erase() was sometimes returning 0 instead of expected 1 element removed.
     if (clients.erase(clientFd) == 0) [[unlikely]]
     {
@@ -230,20 +239,28 @@ std::queue<IrcCommand> IrcServer::translateRawCommands(RawIrcCommands& raws, int
 
     return cmds;
 }
-
 void IrcServer::authenticate(Client &client)
 {
-    if (!password.empty() && (client.getPass() != password))
-    {
-        Logger::debug("Failed to authenticate client, booting them off from server");
-        std::string body = NumericReplies::passMisMatch();
-        msgBroker.enqueue({client.getSocket(), body});
-        clientDisconnected(client.getSocket());
-        return;
-    }
-    std::string body = NumericReplies::welcome() + client.getNick() + " :Welcome to the Internet Relay Network " + client.getNick() + "\r\n";
-    msgBroker.enqueue({client.getSocket(), body});
     client.updateHandshakeState(Client::Handshake::AUTHENTICATED);
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :      ███                                            \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ▒▒▒                                             \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ████  ████████   █████████  █████████  █████████\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :    ▒▒███ ▒▒███▒▒███ ▒█▒▒▒▒███  ▒█▒▒▒▒███  ▒█▒▒▒▒███ \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ▒███  ▒███ ▒▒▒  ▒   ███▒   ▒   ███▒   ▒   ███▒  \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     ▒███  ▒███        ███▒   █   ███▒   █   ███▒   █\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :     █████ █████      █████████  █████████  █████████\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :    ▒▒▒▒▒ ▒▒▒▒▒      ▒▒▒▒▒▒▒▒▒  ▒▒▒▒▒▒▒▒▒  ▒▒▒▒▒▒▒▒▒ \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :                                                     \r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
+    msgBroker.enqueue({client.getSocket(), "001 " + client.getNick() +" :Welcome to the server " + client.getNick() + " :)\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
+    msgBroker.enqueue({client.getSocket(), "002 " + client.getNick() +" :Your host: " + serverName + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "003 " + client.getNick() +" :Created at: " + startTime + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Server message: Be polite, no spam and enjoy your stay\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Online users: " + std::to_string(clients.size()) + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :Channels: " + channels.popularChannelsToStr(10) + "\r\n"});
+    msgBroker.enqueue({client.getSocket(), "372 " + client.getNick() +" :─────────────────────────────────────────────────────\r\n"});
 }
 
 // Handlers
@@ -501,6 +518,8 @@ void IrcServer::HandleNickCmd(const IrcCommand::NickCmd &cmd)
     client.updateHandshakeState(Client::Handshake::RECEIVED_NICK);
     if (!client.isAuthenticated() && client.readyToAuthenticate())
         authenticate(client);
+    if (!client.isAuthenticated())
+        return;
     msgBroker.enqueue({cmd.client, body});
     for(int fd: channels.getSharedChannelClients(cmd.client))
     {
@@ -512,11 +531,17 @@ void IrcServer::HandlePassCmd(const IrcCommand::PassCmd &cmd)
 {
     Client &client = clients[cmd.client];
     client.setPass(cmd.password);
+    if (!password.empty() && (cmd.password != password))
+    {
+        Logger::debug("Failed to authenticate client, booting them off from server");
+        std::string body = NumericReplies::passMisMatch();
+        msgBroker.urgentMsg({client.getSocket(), body});
+        clientDisconnected(client.getSocket());
+        return;
+    }
     client.updateHandshakeState(Client::Handshake::RECEIVED_PASS);
     if (!client.isAuthenticated() && client.readyToAuthenticate())
-    {
         authenticate(client);
-    }
 }
 
 void IrcServer::HandleCapCmd(const IrcCommand::CapCmd &cmd)
@@ -623,12 +648,7 @@ void IrcServer::HandlePartCmd(const IrcCommand::PartCmd &cmd)
         msgBroker.enqueue(broadcast);
         channel = channels.leaveChannel(channelName, cmd.client);
         if (channel && !channel->hasOperator())
-        {
-            Client &clientToPromote = clients[channel->getOldestClient()];
-            std::string strModes = "MODE " + chan + " +o " + clientToPromote.getNick();
-            channels.broadcastModeChange(clientToPromote, channelName, strModes);
-            channel->updateOperators(clientToPromote.getSocket(), true);
-        }
+            channels.autoPromoteToOperator(*channel, clients[channel->getOldestClient()]);
     }
 }
 
@@ -678,6 +698,12 @@ void IrcServer::HandleKickCmd(const IrcCommand::KickCmd &cmd)
     }
 }
 
+void IrcServer::HandleQuitCmd(const IrcCommand::QuitCmd &cmd)
+{
+    channels.leaveAll(clients[cmd.client], clients, cmd.reason);
+    clientDisconnected(cmd.client);
+}
+
 void IrcServer::sendListOfUsers(const Client &client, Channel *channel)
 {
     MessageBroker::Message message; //"<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
@@ -704,4 +730,14 @@ Client *IrcServer::getClientByNick(const std::string &nick)
             return &client;
     }
     return nullptr;
+}
+
+void IrcServer::setStartupTime()
+{
+    std::time_t now = std::time(NULL);
+    std::tm * ptm = std::localtime(&now);
+    char buffer[32];
+    // Format: Mo, 15.06.2009 20:20:00
+    std::strftime(buffer, 32, "%a, %d.%m.%Y %H:%M:%S", ptm);
+    startTime = buffer;
 }

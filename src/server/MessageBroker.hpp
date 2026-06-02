@@ -42,6 +42,7 @@ public:
     void enqueue(const BroadcastMessage &msg);
     void flush();
     void removeStaleMessages(int clientFd);
+    void urgentMsg(const Message &msg);
 private:
     void retryFailedMessages();
     static constexpr int MAX_RETRY_ATTEMPT = 3;

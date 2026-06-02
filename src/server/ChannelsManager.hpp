@@ -2,9 +2,11 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "Channel.hpp"
 #include "server/Client.hpp"
 #include "server/MessageBroker.hpp"
+
 using Channels = std::unordered_map<std::string, Channel>;
 
 class ChannelsManager
@@ -23,8 +25,12 @@ public:
     uint8_t getChannelModes(const std::string &channel);
     Channel *getChannel(const std::string &channel);
     Channel *newChannel(const std::string &channel);
-    void leaveAll(int clientFd);
+    void leaveAll(const Client &client, const Clients &clients, const std::string &reason);
     Channel *leaveChannel(const std::string &channel, int clientFd);
     void removeChannel(const std::string &channel);
     std::set<int> getSharedChannelClients(int clientFd);
+    void autoPromoteToOperator(Channel &channel, const Client &client);
+    Channels getChannels() const ;
+    std::vector<std::pair<int, std::string>> popularChannels();
+    std::string popularChannelsToStr(unsigned int maxNumOfChannels);
 };

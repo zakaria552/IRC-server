@@ -28,12 +28,11 @@ void IOEventPoller::add(const pollfd &newPollfd)
 
 void IOEventPoller::remove(const int &fd)
 {
-    for(size_t i = 0; i < polls.size(); i++)
+    for(auto it = polls.begin(); it != polls.end();)
     {
-        if (polls[i].fd == fd)
-        {
-            polls.erase(polls.begin() + i);
-            return;
-        }
+        if (it->fd == fd)
+            it = polls.erase(it);
+        else
+            it++;
     }
 }
