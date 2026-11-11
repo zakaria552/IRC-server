@@ -64,7 +64,7 @@ Channel operators can manage channels using the following modes:
 Clone the repository and navigate into the project directory:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/zakaria552/IRC-server.git
 cd ft_irc
 ```
 
