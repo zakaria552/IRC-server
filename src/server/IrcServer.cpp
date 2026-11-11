@@ -20,6 +20,7 @@
 #include <system_error>
 #include "server/globals.hpp"
 #include <charconv>
+#include <unistd.h>
 
 IrcServer::IrcServer(const std::string &name, const char *port, const char *password)
     : password(password), msgBroker{}, channels(msgBroker)
